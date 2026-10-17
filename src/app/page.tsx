@@ -24,6 +24,26 @@ export default function HomePage() {
 
         <WalletInput />
 
+        <div className="mt-8 flex justify-center">
+          <a
+            href="https://pump.fun/coin/FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-white hover:bg-purple-500/30 transition-colors text-sm"
+          >
+            <img
+              src="https://pump.fun/favicon.ico"
+              alt="Pump Fun"
+              className="w-4 h-4 object-contain"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement;
+                img.style.display = 'none';
+              }}
+            />
+            PumpFun: FVohCadz...CQPump
+          </a>
+        </div>
+
         <SecurityWarning />
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
