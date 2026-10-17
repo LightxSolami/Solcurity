@@ -84,6 +84,24 @@ export default function HomePage() {
             Privacy Policy
           </Link>
         </div>
+
+        <div className="mt-16 pt-8 border-t border-white/10 text-center">
+          <p className="text-white/50 text-sm mb-4">Found an issue?</p>
+          <a
+            href="https://github.com/LightxSolami/Solcurity/pulls"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 rounded-xl text-solana-blue font-medium hover:bg-solana-purple/30 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 12H8m0 0l3-3m-3 3l3 3v-6m-3 3h6" />
+            </svg>
+            Report an Issue / Contribute
+          </a>
+          <p className="text-white/50 text-xs mt-4">
+            Open source on GitHub • MIT License
+          </p>
+        </div>
       </div>
     </section>
   );
