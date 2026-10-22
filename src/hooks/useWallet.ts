@@ -66,9 +66,11 @@ export function useWallet() {
     if (!provider) {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
-        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
-        const deepLink = `https://phantom.app/uplink?app=Solcurity&redirect=${redirectUri}`;
-        window.location.href = deepLink;
+        const dappUrl = encodeURIComponent(window.location.href);
+        const timeout = setTimeout(() => {
+          window.location.href = "https://phantom.app/mobile";
+        }, 3000);
+        window.location.href = `phantom://uplink?app=Solcurity&dappUrl=${dappUrl}`;
       } else {
         alert("Please install a Solana wallet (Phantom or Solflare)");
       }
