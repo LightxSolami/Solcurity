@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useWallet } from "@/hooks/useWallet";
 
 const navItems = [
   { href: "/", label: "Scanner" },
@@ -16,6 +17,7 @@ const navItems = [
 
 export function NavBar() {
   const pathname = usePathname();
+  const { wallet, connect, disconnect } = useWallet();
 
   return (
     <header className="border-b border-white/10 bg-solana-navy/90 backdrop-blur-sm sticky top-0 z-50">
@@ -56,6 +58,23 @@ export function NavBar() {
               </svg>
               Scan Wallet
             </Link>
+
+            {wallet.connected ? (
+              <button
+                onClick={disconnect}
+                className="px-4 py-2 bg-solana-card border border-white/10 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-colors text-sm font-mono"
+                title={wallet.publicKey || ""}
+              >
+                {wallet.publicKey?.slice(0, 6)}...{wallet.publicKey?.slice(-4)}
+              </button>
+            ) : (
+              <button
+                onClick={connect}
+                className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm"
+              >
+                Connect Wallet
+              </button>
+            )}
           </div>
         </div>
       </div>
