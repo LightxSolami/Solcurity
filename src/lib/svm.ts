@@ -1,4 +1,4 @@
-import { Connection, PublicKey, LAMPORTS_PER_SOL, SystemProgram, Transaction } from "@solana/web3.js";
+import { Connection, PublicKey, LAMPORTS_PER_SOL, type AccountInfo } from "@solana/web3.js";
 import { groq } from "@/lib/groq";
 
 export interface SvmAccountInfo {
@@ -9,6 +9,8 @@ export interface SvmAccountInfo {
   executable: boolean;
   rentEpoch: number;
   dataSize: number;
+  rentExempt: boolean;
+  accountType?: string;
 }
 
 export interface SvmTransactionInfo {
@@ -22,12 +24,29 @@ export interface SvmTransactionInfo {
   };
 }
 
+export interface TokenAccountInfo {
+  pubkey: string;
+  mint: string;
+  owner: string;
+  amount: number;
+  decimals: number;
+  tokenAmount: string;
+}
+
 export interface ProgramAnalysisResult {
   programId: string;
   analysis: string;
   riskLevel: "low" | "medium" | "high";
   recommendations: string[];
   potentialIssues: string[];
+}
+
+export interface EpochInfo {
+  slotIndex: number;
+  slotInEpoch: number;
+  epoch: number;
+  transactionCount: number;
+  blockHeight: number;
 }
 
 const DEFAULT_LOCAL_RPC = "http://127.0.0.1:8899";
@@ -66,6 +85,10 @@ export async function getAccountInfo(
 
     if (!accountInfo) return null;
 
+    const accountType = getAccountType(publicKey, accountInfo);
+
+    const rentThreshold = await connection.getMinimumBalanceForRentExemption(accountInfo.data.length);
+
     return {
       pubkey,
       lamports: accountInfo.lamports,
@@ -74,10 +97,58 @@ export async function getAccountInfo(
       executable: accountInfo.executable,
       rentEpoch: accountInfo.rentEpoch ?? 0,
       dataSize: accountInfo.data.length,
+      rentExempt: accountInfo.lamports >= rentThreshold,
+      accountType,
     };
   } catch (error) {
     console.error("Error fetching account info:", error);
     return null;
+  }
+}
+
+export async function getTokenAccounts(
+  pubkey: string,
+  rpcUrl: string = DEFAULT_LOCAL_RPC
+): Promise<TokenAccountInfo[]> {
+  try {
+    const connection = getSvmConnection(rpcUrl);
+    const publicKey = new PublicKey(pubkey);
+
+    const accounts: TokenAccountInfo[] = [];
+
+    const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, {
+      programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+    }).catch(() => ({ value: [] }));
+
+    const token2022Accounts = await connection.getTokenAccountsByOwner(publicKey, {
+      programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+    }).catch(() => ({ value: [] }));
+
+    for (const account of [...tokenAccounts.value, ...token2022Accounts.value]) {
+      try {
+        const accountInfo = await connection.getAccountInfo(account.pubkey);
+        if (!accountInfo) continue;
+
+        const data = JSON.parse(accountInfo.data.toString());
+        const parsed = data?.parsed?.info;
+
+        if (parsed) {
+          accounts.push({
+            pubkey: account.pubkey.toBase58(),
+            mint: parsed.mint,
+            owner: parsed.owner,
+            amount: Number(parsed.tokenAmount.amount),
+            decimals: parsed.tokenAmount.decimals,
+            tokenAmount: parsed.tokenAmount.uiAmountString,
+          });
+        }
+      } catch {}
+    }
+
+    return accounts;
+  } catch (error) {
+    console.error("Error fetching token accounts:", error);
+    return [];
   }
 }
 
@@ -163,9 +234,10 @@ Format your response as JSON with keys: riskLevel, potentialIssues, recommendati
           content: `Analyze this Solana SVM program (ID: ${programId}) execution logs:\n\n${logsText.slice(0, 8000)}`,
         },
       ],
-      model: "deepseek-r1-distill-llama-70b",
+      model: "qwen/qwen3.8-27b",
       temperature: 0.1,
       max_tokens: 2048,
+      response_format: { type: "json_object" },
     });
 
     const response = chatCompletion.choices[0]?.message?.content || "{}";
@@ -193,7 +265,7 @@ Format your response as JSON with keys: riskLevel, potentialIssues, recommendati
 export async function getProgramAccounts(
   programId: string,
   rpcUrl: string = DEFAULT_LOCAL_RPC
-): Promise<{ pubkey: string; data: string }[]> {
+): Promise<{ pubkey: string; owner: string; data: string; lamports: number }[]> {
   try {
     const connection = getSvmConnection(rpcUrl);
     const publicKey = new PublicKey(programId);
@@ -204,10 +276,72 @@ export async function getProgramAccounts(
 
     return accounts.map((acc) => ({
       pubkey: acc.pubkey.toBase58(),
+      owner: acc.account.owner.toBase58(),
       data: typeof acc.account.data === "string" ? acc.account.data : acc.account.data.toString("hex"),
+      lamports: acc.account.lamports,
     }));
   } catch (error) {
     console.error("Error fetching program accounts:", error);
     return [];
   }
+}
+
+export async function getEpochInfo(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<EpochInfo | null> {
+  try {
+    const connection = getSvmConnection(rpcUrl);
+    const epochInfo = await connection.getEpochInfo();
+
+    return {
+      slotIndex: epochInfo.slotIndex,
+      slotInEpoch: epochInfo.slotsInEpoch || 0,
+      epoch: epochInfo.epoch,
+      transactionCount: epochInfo.transactionCount || 0,
+      blockHeight: epochInfo.blockHeight || 0,
+    };
+  } catch (error) {
+    console.error("Error fetching epoch info:", error);
+    return null;
+  }
+}
+
+function getAccountType(pubkey: PublicKey, accountInfo: AccountInfo<Buffer<ArrayBufferLike>>): string {
+  const owner = accountInfo.owner.toBase58();
+
+  const knownPrograms: Record<string, string> = {
+    "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": "SPL Token Account",
+    "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ": "Token-2022 Account",
+    "BPFLoader1111111111111111111111111111111111": "BPF Loader",
+    "BPFLoader2111111111111111111111111111111111": "BPF Loader v2",
+    "BPFLoaderUpgradeab1e11111111111111111111111": "BPF Upgradeable Loader",
+    "Stake11111111111111111111111111111111111": "Stake Account",
+    "Vote111111111111111111111111111111111111111": "Vote Account",
+    "SysvarRepDateSysvar1111111111111111111111111111111": "Sysvar: Recent Blockhashes",
+    "SysvarClock11111111111111111111111111111111": "Sysvar: Clock",
+    "SysvarEpochRewards1111111111111111111111111": "Sysvar: Epoch Rewards",
+    "SysvarRent111111111111111111111111111111111": "Sysvar: Rent",
+    "SysvarSlotHistory1111111111111111111111111": "Sysvar: Slot History",
+    "SysvarStakeHistory1111111111111111111111111": "Sysvar: Stake History",
+    "NativeLoader1111111111111111111111111111111": "Native Loader",
+    "StakeConfig11111111111111111111111111111111": "Stake Config",
+  };
+
+  if (accountInfo.executable) {
+    return knownPrograms[owner] || "Executable Program";
+  }
+
+  if (pubkey.toBase58() === "11111111111111111111111111111111") {
+    return "System Program";
+  }
+
+  if (owner === "11111111111111111111111111111111") {
+    return "System Account";
+  }
+
+  for (const [programId, name] of Object.entries(knownPrograms)) {
+    if (owner === programId) {
+      return name;
+    }
+  }
+
+  return "Unknown Account";
 }

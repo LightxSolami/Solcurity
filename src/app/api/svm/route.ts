@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountInfo, getRecentTransactions, airdropSol, analyzeProgramLogs, getProgramAccounts, isSvmRunning } from "@/lib/svm";
+import { getAccountInfo, getRecentTransactions, airdropSol, analyzeProgramLogs, getProgramAccounts, isSvmRunning, getTokenAccounts, getEpochInfo } from "@/lib/svm";
 import { z } from "zod";
 
 const SvmActionSchema = z.object({
-  action: z.enum(["check", "account", "transactions", "airdrop", "analyze", "programs"]),
+  action: z.enum([
+    "check",
+    "account",
+    "transactions",
+    "airdrop",
+    "analyze",
+    "programs",
+    "tokens",
+    "epoch",
+  ]),
   pubkey: z.string().optional(),
   amount: z.number().optional(),
   rpcUrl: z.string().optional(),
@@ -20,6 +29,12 @@ export async function GET(request: NextRequest) {
     const rpcUrl = searchParams.rpcUrl || "http://127.0.0.1:8899";
     const running = await isSvmRunning(rpcUrl);
     return NextResponse.json({ running });
+  }
+
+  if (action === "epoch") {
+    const rpcUrl = searchParams.rpcUrl || "http://127.0.0.1:8899";
+    const epoch = await getEpochInfo(rpcUrl);
+    return NextResponse.json({ epoch });
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -51,7 +66,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "pubkey required" }, { status: 400 });
         }
         const info = await getAccountInfo(data.pubkey, rpcUrl);
-        return NextResponse.json({ account: info });
+        const tokens = info ? await getTokenAccounts(data.pubkey, rpcUrl) : [];
+        return NextResponse.json({ account: info, tokens });
       }
 
       case "transactions": {
@@ -60,6 +76,14 @@ export async function POST(request: NextRequest) {
         }
         const txs = await getRecentTransactions(data.pubkey, 20, rpcUrl);
         return NextResponse.json({ transactions: txs });
+      }
+
+      case "tokens": {
+        if (!data.pubkey) {
+          return NextResponse.json({ error: "pubkey required" }, { status: 400 });
+        }
+        const tokens = await getTokenAccounts(data.pubkey, rpcUrl);
+        return NextResponse.json({ tokens });
       }
 
       case "airdrop": {

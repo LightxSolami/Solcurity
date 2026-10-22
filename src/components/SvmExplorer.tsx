@@ -1,22 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { SvmAccountInfo, SvmTransactionInfo, ProgramAnalysisResult } from "@/lib/svm";
-
-interface ApiResponse<T> {
-  [key: string]: T;
-}
+import { SvmAccountInfo, SvmTransactionInfo, ProgramAnalysisResult, TokenAccountInfo, EpochInfo } from "@/lib/svm";
 
 interface CheckResponse {
   running: boolean;
 }
 
-interface AccountResponse extends ApiResponse<SvmAccountInfo | null> {
+interface AccountResponse {
   account: SvmAccountInfo | null;
+  tokens: TokenAccountInfo[];
 }
 
-interface TransactionsResponse extends ApiResponse<SvmTransactionInfo[]> {
+interface TransactionsResponse {
   transactions: SvmTransactionInfo[];
+}
+
+interface TokensResponse {
+  tokens: TokenAccountInfo[];
 }
 
 interface AirdropResponse {
@@ -24,12 +25,16 @@ interface AirdropResponse {
   amount: number;
 }
 
-interface AnalyzeResponse extends ApiResponse<ProgramAnalysisResult> {
+interface AnalyzeResponse {
   analysis: ProgramAnalysisResult;
 }
 
 interface ProgramsResponse {
-  accounts: { pubkey: string; data: string }[];
+  accounts: { pubkey: string; owner: string; data: string; lamports: number }[];
+}
+
+interface EpochResponse {
+  epoch: EpochInfo | null;
 }
 
 export function SvmExplorer() {
@@ -38,16 +43,21 @@ export function SvmExplorer() {
   const [loading, setLoading] = useState(false);
   const [pubkey, setPubkey] = useState("");
   const [account, setAccount] = useState<SvmAccountInfo | null>(null);
+  const [tokens, setTokens] = useState<TokenAccountInfo[]>([]);
   const [transactions, setTransactions] = useState<SvmTransactionInfo[]>([]);
+  const [epoch, setEpoch] = useState<EpochInfo | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ProgramAnalysisResult | null>(null);
-  const [programAccounts, setProgramAccounts] = useState<{ pubkey: string; data: string }[]>([]);
-   const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
-   const [error, setError] = useState<string | null>(null);
+  const [programAccounts, setProgramAccounts] = useState<{ pubkey: string; owner: string; data: string; lamports: number }[]>([]);
+  const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
 
   const API_BASE = "/api/svm";
+  const LAMPORTS_PER_SOL = 1000000000;
 
   useEffect(() => {
     checkSvmStatus();
+    fetchEpochInfo();
   }, [rpcUrl]);
 
   async function checkSvmStatus() {
@@ -66,9 +76,21 @@ export function SvmExplorer() {
       } else {
         setError(null);
       }
-    } catch (err) {
+    } catch {
       setIsRunning(false);
       setError("Cannot connect to SVM. Is the local validator running?");
+    }
+  }
+
+  async function fetchEpochInfo() {
+    try {
+      const res = await fetch(`${API_BASE}?action=epoch&rpcUrl=${encodeURIComponent(rpcUrl)}`);
+      if (res.ok) {
+        const data = await res.json() as EpochResponse;
+        setEpoch(data.epoch);
+      }
+    } catch {
+      // Silently handle epoch fetch errors
     }
   }
 
@@ -89,10 +111,11 @@ export function SvmExplorer() {
       }
       const data = await res.json() as AccountResponse;
       setAccount(data.account);
+      setTokens(data.tokens || []);
       if (!data.account) {
         setError("Account not found");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
@@ -116,7 +139,31 @@ export function SvmExplorer() {
       }
       const data = await res.json() as TransactionsResponse;
       setTransactions(data.transactions);
-    } catch (err) {
+    } catch {
+      setError("Network error. Is the SVM endpoint accessible?");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function fetchTokens() {
+    if (!pubkey) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "tokens", pubkey, rpcUrl }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to fetch tokens");
+        return;
+      }
+      const data = await res.json() as TokensResponse;
+      setTokens(data.tokens || []);
+    } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
@@ -125,7 +172,7 @@ export function SvmExplorer() {
 
   async function requestAirdrop(amount?: number) {
     if (!pubkey) return;
-    const airdropAmount = amount || Math.random() * 5 + 0.1;
+    const airdropAmount = amount || (customAmount ? parseFloat(customAmount) : Math.random() * 5 + 0.1);
     setLoading(true);
     setError(null);
     try {
@@ -142,9 +189,9 @@ export function SvmExplorer() {
       const data = await res.json() as AirdropResponse;
       setAirdropped(data);
       if (!data.signature) {
-        setError("Airdrop failed. Check if the local validator is running.");
+        setError("Airdrop failed. Faucet rate limit may be reached. Try again later or reduce amount.");
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
@@ -169,7 +216,7 @@ export function SvmExplorer() {
       }
       const data = await res.json() as AnalyzeResponse;
       setAnalysisResult(data.analysis);
-    } catch (err) {
+    } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
@@ -193,7 +240,7 @@ export function SvmExplorer() {
       }
       const data = await res.json() as ProgramsResponse;
       setProgramAccounts(data.accounts);
-    } catch (err) {
+    } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
@@ -202,16 +249,16 @@ export function SvmExplorer() {
 
   return (
     <div className="min-h-screen bg-solana-dark px-4 py-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">SVM Explorer</h1>
           <p className="text-white/60">Local Solana Virtual Machine explorer for testing and debugging</p>
         </div>
 
         <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
-      <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-white/70 mb-1">RPC URL</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">RPC Endpoint</label>
               <select
                 value={rpcUrl}
                 onChange={(e) => setRpcUrl(e.target.value)}
@@ -255,6 +302,33 @@ export function SvmExplorer() {
           </div>
         </div>
 
+        {epoch && (
+          <div className="bg-solana-card rounded-2xl border border-white/10 p-4 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+              <div>
+                <p className="text-white/50 text-xs">Epoch</p>
+                <p className="text-white font-mono text-sm">{Number(epoch.epoch)}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Slot Index</p>
+                <p className="text-white font-mono text-sm">{Number(epoch.slotIndex)}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Slots in Epoch</p>
+                <p className="text-white font-mono text-sm">{Number(epoch.slotInEpoch)}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Transactions</p>
+                <p className="text-white font-mono text-sm">{Number(epoch.transactionCount)}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-xs">Block Height</p>
+                <p className="text-white font-mono text-sm">{Number(epoch.blockHeight)}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
           <h2 className="text-xl font-semibold text-white mb-4">SVM Actions</h2>
           <div className="flex flex-wrap gap-3">
@@ -263,7 +337,7 @@ export function SvmExplorer() {
               disabled={loading || !pubkey || !isRunning}
               className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              Fetch Account
+              Fetch Account & Tokens
             </button>
             <button
               onClick={fetchTransactions}
@@ -277,7 +351,7 @@ export function SvmExplorer() {
               disabled={loading || !pubkey || !isRunning}
               className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
-              Random Airdrop
+              Random Airdrop (0.1-5 SOL)
             </button>
             <button
               onClick={() => requestAirdrop(1)}
@@ -286,6 +360,26 @@ export function SvmExplorer() {
             >
               Airdrop 1 SOL
             </button>
+            <div className="flex gap-2 items-end">
+              <input
+                type="number"
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+                placeholder="Amount"
+                className="w-24 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-solana-purple"
+                min="0"
+                step="0.01"
+              />
+              <button
+                onClick={() => requestAirdrop(parseFloat(customAmount))}
+                disabled={loading || !pubkey || !isRunning || !customAmount}
+                className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+              >
+                Airdrop Custom
+              </button>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
             <button
               onClick={analyzeProgram}
               disabled={loading || !pubkey || transactions.length === 0}
@@ -332,20 +426,65 @@ export function SvmExplorer() {
               </div>
               <div>
                 <p className="text-white/50 text-sm">Owner</p>
-                <p className="text-white font-mono text-sm break-all">{account.owner}</p>
+                <p className="text-white/60 font-mono text-sm break-all">{account.owner}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-sm">Account Type</p>
+                <p className="text-white/80 text-sm">{account.accountType || "Unknown"}</p>
               </div>
               <div>
                 <p className="text-white/50 text-sm">Executable</p>
-                <p className="text-white">{account.executable ? "Yes" : "No"}</p>
+                <p className="text-white/80">{account.executable ? "Yes" : "No"}</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-sm">Rent Exempt</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  account.rentExempt
+                    ? "bg-solana-green/20 text-solana-green"
+                    : "bg-risk-moderate/20 text-risk-moderate"
+                }`}>
+                  {account.rentExempt ? "Yes" : "No"}
+                </span>
               </div>
               <div>
                 <p className="text-white/50 text-sm">Data Size</p>
-                <p className="text-white">{account.dataSize} bytes</p>
+                <p className="text-white/80">{account.dataSize} bytes</p>
               </div>
               <div>
                 <p className="text-white/50 text-sm">Rent Epoch</p>
-                <p className="text-white">{account.rentEpoch}</p>
+                <p className="text-white/80">{account.rentEpoch}</p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {tokens.length > 0 && (
+          <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">
+              Token Holdings ({tokens.length})
+            </h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-white/10">
+                    <th className="text-white/50 text-xs font-medium pb-3">Mint</th>
+                    <th className="text-white/50 text-xs font-medium pb-3">Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tokens.map((token) => (
+                    <tr key={token.pubkey} className="border-b border-white/5">
+                      <td className="py-3">
+                        <p className="text-white/80 font-mono text-xs break-all">{token.mint}</p>
+                        <p className="text-white/50 text-xs">{token.decimals} decimals</p>
+                      </td>
+                      <td className="py-3">
+                        <p className="text-white/80 font-mono">{token.tokenAmount}</p>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -354,7 +493,7 @@ export function SvmExplorer() {
           <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
             <h2 className="text-xl font-semibold text-white mb-4">Airdrop Successful</h2>
             <p className="text-white/70 mb-2">Amount: {airdropped.amount.toFixed(4)} SOL</p>
-            <p className="text-white/70 font-mono text-sm break-all">{airdropped.signature}</p>
+            <p className="text-white/60 font-mono text-xs break-all">{airdropped.signature}</p>
           </div>
         )}
 
@@ -365,7 +504,9 @@ export function SvmExplorer() {
               {transactions.map((tx) => (
                 <div key={tx.signature} className="border border-white/10 rounded-xl p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-white/50 font-mono text-xs break-all">{tx.signature.slice(0, 16)}...{tx.signature.slice(-12)}</p>
+                    <p className="text-white/50 font-mono text-xs break-all">
+                      {tx.signature.slice(0, 16)}...{tx.signature.slice(-12)}
+                    </p>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
                       tx.meta.success
                         ? "bg-solana-green/20 text-solana-green"
@@ -375,7 +516,7 @@ export function SvmExplorer() {
                     </span>
                   </div>
                   <p className="text-white/50 text-xs mb-2">
-                    Slot: {tx.slot} • Fee: {tx.meta.fee / LAMPORTS_PER_SOL} SOL
+                    Slot: {tx.slot} • Fee: {(tx.meta.fee / LAMPORTS_PER_SOL).toFixed(6)} SOL
                   </p>
                   {tx.meta.logMessages.length > 0 && (
                     <div className="mt-2">
@@ -440,7 +581,10 @@ export function SvmExplorer() {
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {programAccounts.slice(0, 50).map((acc) => (
                 <div key={acc.pubkey} className="border border-white/10 rounded-lg p-3">
-                  <p className="text-white/50 font-mono text-xs break-all">{acc.pubkey}</p>
+                  <div className="flex justify-between">
+                    <p className="text-white/50 font-mono text-xs break-all">{acc.pubkey}</p>
+                    <span className="text-white/40 text-xs">{(acc.lamports / LAMPORTS_PER_SOL).toFixed(9)} SOL</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -449,13 +593,12 @@ export function SvmExplorer() {
 
         <div className="text-center text-white/50 text-sm">
           <p className="mb-2">To use SVM Explorer, run a local validator:</p>
-          <code className="bg-black/20 px-2 py-1 rounded mb-2 inline-block">
+          <code className="bg-black/20 px-3 py-1 rounded mb-2 inline-block">
             solana-test-validator
           </code>
           <p className="mt-4 text-xs text-white/40">
             Install Solana CLI from: https://solana.com/docs/intro/getting-started
             <br />
-            Tip: The installed Solana CLI v1.18.17 may need the full validator binary.
             Alternatively, use devnet: <code className="bg-black/20 px-1 rounded">https://api.devnet.solana.com</code>
           </p>
         </div>
@@ -463,5 +606,3 @@ export function SvmExplorer() {
     </div>
   );
 }
-
-const LAMPORTS_PER_SOL = 1000000000;
