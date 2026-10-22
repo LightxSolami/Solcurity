@@ -66,7 +66,9 @@ export function useWallet() {
     if (!provider) {
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile) {
-        window.open("https://phantom.app/uplink", "_blank");
+        const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+        const deepLink = `https://phantom.app/uplink?app=Solcurity&redirect=${redirectUri}`;
+        window.location.href = deepLink;
       } else {
         alert("Please install a Solana wallet (Phantom or Solflare)");
       }
@@ -97,7 +99,11 @@ export function useWallet() {
       });
     } catch (err: any) {
       console.error("Failed to connect wallet:", err);
-      alert(err.message || "Failed to connect wallet");
+      if (err.code === 4001 || err.message?.includes("reject")) {
+        alert("Wallet connection rejected");
+      } else {
+        alert(err.message || "Failed to connect wallet");
+      }
     }
   }, [detectProvider]);
 
