@@ -16,6 +16,8 @@ type Room = {
 const DEFAULT_ROOMS: Room[] = [
   { id: "r-0.05", name: "0.05 SOL", entry: 0.05, maxPlayers: 5, status: "waiting" },
   { id: "r-0.1", name: "0.1 SOL", entry: 0.1, maxPlayers: 5, status: "waiting" },
+  { id: "r-1", name: "1 SOL", entry: 1, maxPlayers: 5, status: "waiting" },
+  { id: "r-5", name: "5 SOL", entry: 5, maxPlayers: 5, status: "waiting" },
   { id: "r-random", name: "Random Amount", entry: 0, maxPlayers: 5, status: "waiting" },
 ];
 
