@@ -41,7 +41,8 @@ export function SvmExplorer() {
   const [transactions, setTransactions] = useState<SvmTransactionInfo[]>([]);
   const [analysisResult, setAnalysisResult] = useState<ProgramAnalysisResult | null>(null);
   const [programAccounts, setProgramAccounts] = useState<{ pubkey: string; data: string }[]>([]);
-  const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
+   const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
+   const [error, setError] = useState<string | null>(null);
 
   const API_BASE = "/api/svm";
 
@@ -52,26 +53,47 @@ export function SvmExplorer() {
   async function checkSvmStatus() {
     try {
       const res = await fetch(`${API_BASE}?action=check&rpcUrl=${encodeURIComponent(rpcUrl)}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to check SVM status");
+        setIsRunning(false);
+        return;
+      }
       const data = await res.json() as CheckResponse;
       setIsRunning(data.running);
-    } catch {
+      if (!data.running) {
+        setError("SVM is not running. Start a local validator with: solana-test-validator");
+      } else {
+        setError(null);
+      }
+    } catch (err) {
       setIsRunning(false);
+      setError("Cannot connect to SVM. Is the local validator running?");
     }
   }
 
   async function fetchAccount() {
     if (!pubkey) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "account", pubkey, rpcUrl }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to fetch account");
+        return;
+      }
       const data = await res.json() as AccountResponse;
       setAccount(data.account);
-    } catch (error) {
-      console.error("Error fetching account:", error);
+      if (!data.account) {
+        setError("Account not found");
+      }
+    } catch (err) {
+      setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
     }
@@ -80,16 +102,22 @@ export function SvmExplorer() {
   async function fetchTransactions() {
     if (!pubkey) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "transactions", pubkey, rpcUrl }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to fetch transactions");
+        return;
+      }
       const data = await res.json() as TransactionsResponse;
       setTransactions(data.transactions);
-    } catch (error) {
-      console.error("Error fetching transactions:", error);
+    } catch (err) {
+      setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
     }
@@ -99,16 +127,25 @@ export function SvmExplorer() {
     if (!pubkey) return;
     const airdropAmount = amount || Math.random() * 5 + 0.1;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "airdrop", pubkey, amount: airdropAmount, rpcUrl }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to request airdrop");
+        return;
+      }
       const data = await res.json() as AirdropResponse;
       setAirdropped(data);
-    } catch (error) {
-      console.error("Error requesting airdrop:", error);
+      if (!data.signature) {
+        setError("Airdrop failed. Check if the local validator is running.");
+      }
+    } catch (err) {
+      setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
     }
@@ -117,6 +154,7 @@ export function SvmExplorer() {
   async function analyzeProgram() {
     if (!pubkey || transactions.length === 0) return;
     setLoading(true);
+    setError(null);
     try {
       const allLogs = transactions.flatMap((tx) => tx.meta.logMessages);
       const res = await fetch(API_BASE, {
@@ -124,10 +162,15 @@ export function SvmExplorer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "analyze", programId: pubkey, logs: allLogs, rpcUrl }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to analyze program");
+        return;
+      }
       const data = await res.json() as AnalyzeResponse;
       setAnalysisResult(data.analysis);
-    } catch (error) {
-      console.error("Error analyzing program:", error);
+    } catch (err) {
+      setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
     }
@@ -136,16 +179,22 @@ export function SvmExplorer() {
   async function fetchProgramAccounts() {
     if (!pubkey) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "programs", programId: pubkey, rpcUrl }),
       });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to fetch program accounts");
+        return;
+      }
       const data = await res.json() as ProgramsResponse;
       setProgramAccounts(data.accounts);
-    } catch (error) {
-      console.error("Error fetching program accounts:", error);
+    } catch (err) {
+      setError("Network error. Is the SVM endpoint accessible?");
     } finally {
       setLoading(false);
     }
@@ -209,43 +258,43 @@ export function SvmExplorer() {
           <div className="flex flex-wrap gap-3">
             <button
               onClick={fetchAccount}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || !isRunning}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Fetch Account
             </button>
             <button
               onClick={fetchTransactions}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || !isRunning}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Fetch Transactions
             </button>
             <button
               onClick={() => requestAirdrop()}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || !isRunning}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Random Airdrop
             </button>
             <button
               onClick={() => requestAirdrop(1)}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || !isRunning}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Airdrop 1 SOL
             </button>
             <button
               onClick={analyzeProgram}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || transactions.length === 0}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               AI Analyze Program
             </button>
             <button
               onClick={fetchProgramAccounts}
-              disabled={loading || !pubkey}
-              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 text-sm"
+              disabled={loading || !pubkey || !isRunning}
+              className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Program Accounts
             </button>
@@ -258,6 +307,12 @@ export function SvmExplorer() {
               <div className="w-8 h-8 border-2 border-solana-blue/30 border-t-solana-blue rounded-full animate-spin"></div>
               <span className="text-white/50 ml-3">Processing...</span>
             </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-risk-critical/10 border border-risk-critical/30 rounded-xl p-4 mb-6">
+            <p className="text-risk-critical text-sm">{error}</p>
           </div>
         )}
 

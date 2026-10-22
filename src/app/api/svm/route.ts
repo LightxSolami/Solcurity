@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   if (action === "check") {
     const rpcUrl = searchParams.rpcUrl || "http://127.0.0.1:8899";
-    const running = isSvmRunning(rpcUrl);
+    const running = await isSvmRunning(rpcUrl);
     return NextResponse.json({ running });
   }
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     switch (data.action) {
       case "check": {
-        const running = isSvmRunning(rpcUrl);
+        const running = await isSvmRunning(rpcUrl);
         return NextResponse.json({ running });
       }
 

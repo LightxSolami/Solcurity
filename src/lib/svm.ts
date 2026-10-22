@@ -45,10 +45,10 @@ export function getSvmConnection(rpcUrl: string = DEFAULT_LOCAL_RPC): Connection
   return svmConnection;
 }
 
-export function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC): boolean {
+export async function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<boolean> {
   try {
     const connection = getSvmConnection(rpcUrl);
-    connection.getEpochInfo();
+    await connection.getEpochInfo();
     return true;
   } catch {
     return false;
