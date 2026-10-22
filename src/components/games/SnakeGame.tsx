@@ -355,7 +355,7 @@ export function SnakeGame({
       <div className="relative mb-4">
         <canvas
           ref={canvasRef}
-          className="rounded-xl border-2 border-white/10 shadow-2xl"
+          className="rounded-xl border-2 border-white/10 shadow-2xl bg-[#0a0a23]"
           style={{ imageRendering: "pixelated" }}
         />
         <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-4 text-center">
