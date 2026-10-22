@@ -4,41 +4,32 @@ import { useState, useEffect, useCallback } from "react";
 
 const DEV_WALLET = "q8QWr2Xo5KXaiFKjdFzi8W8PZgCJ9Vj4ofGfVistzPv";
 
-interface PhantomProvider {
+interface SolanaProvider {
   publicKey: { toBase58: () => string; toString: () => string } | null;
   isConnected: boolean;
+  isPhantom?: boolean;
+  isSolflare?: boolean;
   signTransaction: (tx: any) => Promise<any>;
   signAllTransactions: (txs: any[]) => Promise<any[]>;
-  connect: () => Promise<{ publicKey: { toBase58: () => string } }>;
-  disconnect: () => Promise<void>;
-  on: (event: string, callback: (args?: any) => void) => void;
-  request: (args: { method: string; params?: any }) => Promise<any>;
-}
-
-interface SolflareProvider {
-  publicKey: { toBase58: () => string } | null;
-  isConnected: boolean;
-  signTransaction: (tx: any) => Promise<any>;
-  signAllTransactions: (txs: any[]) => Promise<any[]>;
-  connect: () => Promise<void>;
+  connect: (opts?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toBase58: () => string } }>;
   disconnect: () => Promise<void>;
   on: (event: string, callback: (args?: any) => void) => void;
   off: (event: string, callback: (args?: any) => void) => void;
+  request?: (args: { method: string; params?: any }) => Promise<any>;
 }
-
-type WalletProvider = PhantomProvider | SolflareProvider;
 
 declare global {
   interface Window {
-    phantom?: { solana?: PhantomProvider };
-    solflare?: SolflareProvider;
+    solana?: SolanaProvider;
+    phantom?: { solana?: SolanaProvider };
+    solflare?: SolanaProvider;
   }
 }
 
-export type WalletInfo = {
+type WalletInfo = {
   connected: boolean;
   publicKey: string | null;
-  provider: WalletProvider | null;
+  provider: SolanaProvider | null;
 };
 
 export function useWallet() {
@@ -48,15 +39,23 @@ export function useWallet() {
     provider: null,
   });
 
-  const detectProvider = useCallback((): WalletProvider | null => {
+  const detectProvider = useCallback((): SolanaProvider | null => {
     if (typeof window === "undefined") return null;
 
-    if (window.solflare) {
+    if (window.solflare && (window.solflare as any).isSolflare) {
       return window.solflare;
+    }
+
+    if (window.solana && window.solana.isPhantom) {
+      return window.solana;
     }
 
     if (window.phantom?.solana) {
       return window.phantom.solana;
+    }
+
+    if (window.solflare) {
+      return window.solflare;
     }
 
     return null;
@@ -72,22 +71,19 @@ export function useWallet() {
     try {
       let publicKey: { toBase58: () => string } | null = null;
 
-      if ("request" in provider) {
-        const resp = await provider.request!({
-          method: "sol_connect",
-          params: [undefined],
+      if (provider.connect) {
+        const result = await provider.connect();
+        publicKey = result?.publicKey || provider.publicKey;
+      } else if (provider.request) {
+        const resp = await provider.request({
+          method: "solana_connect",
         });
-        publicKey = resp.publicKey;
-      } else {
-        const result = await (provider.connect() as Promise<any>);
-        if (result && typeof result === 'object' && 'publicKey' in result) {
-          publicKey = result.publicKey;
-        } else if (provider.publicKey) {
-          publicKey = provider.publicKey;
-        }
+        publicKey = resp?.publicKey;
       }
 
-      if (!publicKey) throw new Error("No public key returned");
+      if (!publicKey) {
+        throw new Error("No public key returned");
+      }
 
       setWallet({
         connected: true,
@@ -103,9 +99,7 @@ export function useWallet() {
   const disconnect = useCallback(async () => {
     if (wallet.provider) {
       try {
-        if ("disconnect" in wallet.provider) {
-          await wallet.provider.disconnect();
-        }
+        await wallet.provider.disconnect();
       } catch (e) {
         console.error("Disconnect error:", e);
       }
@@ -156,7 +150,8 @@ export function useWallet() {
 
     return () => {
       try {
-        provider.on("disconnect", () => {});
+        provider.off?.("connect", handleConnect);
+        provider.off?.("disconnect", handleDisconnect);
       } catch {}
     };
   }, [detectProvider]);
