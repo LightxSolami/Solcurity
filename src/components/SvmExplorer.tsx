@@ -209,16 +209,18 @@ export function SvmExplorer() {
         </div>
 
         <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
-          <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-4 mb-4">
             <div className="flex-1">
               <label className="block text-sm font-medium text-white/70 mb-1">RPC URL</label>
-              <input
-                type="text"
+              <select
                 value={rpcUrl}
                 onChange={(e) => setRpcUrl(e.target.value)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-solana-purple"
-                placeholder="http://127.0.0.1:8899"
-              />
+              >
+                <option value="http://127.0.0.1:8899">Local Validator (solana-test-validator)</option>
+                <option value="https://api.devnet.solana.com">Devnet</option>
+                <option value="https://api.testnet.solana.com">Testnet</option>
+              </select>
             </div>
             <div className="flex items-end">
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -446,10 +448,16 @@ export function SvmExplorer() {
         )}
 
         <div className="text-center text-white/50 text-sm">
-          <p>To use SVM Explorer, run a local validator:</p>
-          <code className="bg-black/20 px-2 py-1 rounded mt-2 inline-block">
+          <p className="mb-2">To use SVM Explorer, run a local validator:</p>
+          <code className="bg-black/20 px-2 py-1 rounded mb-2 inline-block">
             solana-test-validator
           </code>
+          <p className="mt-4 text-xs text-white/40">
+            Install Solana CLI from: https://solana.com/docs/intro/getting-started
+            <br />
+            Tip: The installed Solana CLI v1.18.17 may need the full validator binary.
+            Alternatively, use devnet: <code className="bg-black/20 px-1 rounded">https://api.devnet.solana.com</code>
+          </p>
         </div>
       </div>
     </div>
