@@ -64,7 +64,12 @@ export function useWallet() {
   const connect = useCallback(async () => {
     const provider = detectProvider();
     if (!provider) {
-      alert("Please install a Solana wallet (Phantom or Solflare)");
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        window.open("https://phantom.app/uplink", "_blank");
+      } else {
+        alert("Please install a Solana wallet (Phantom or Solflare)");
+      }
       return;
     }
 
@@ -157,4 +162,15 @@ export function useWallet() {
   }, [detectProvider]);
 
   return { wallet, connect, disconnect, signTransaction, detectProvider, devWallet: DEV_WALLET };
+}
+
+export function isMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+export function getPhantomMobileRedirectUrl(): string {
+  const appName = "Solcurity";
+  const redirectUrl = encodeURIComponent(window.location.origin);
+  return `https://phantom.app/uplink?app=${appName}&redirect=${redirectUrl}`;
 }
