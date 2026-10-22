@@ -5,10 +5,10 @@ import { PublicKey } from "@solana/web3.js";
 
 // Client-side RPC endpoints for fallback
 const CLIENT_RPC_ENDPOINTS = [
-  "https://api.mainnet-beta.solana.com",
   "https://solana-mainnet.g.alchemy.com/v2/demo",
   "https://rpc.ankr.com/solana",
   "https://solana.drpc.org",
+  "https://api.mainnet-beta.solana.com",
 ];
 
 interface RocketMapFullScreenProps {

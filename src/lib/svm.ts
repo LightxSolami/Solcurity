@@ -50,6 +50,14 @@ export interface EpochInfo {
 }
 
 const DEFAULT_LOCAL_RPC = "http://127.0.0.1:8899";
+const DEVNET_RPC = "https://api.devnet.solana.com";
+const TESTNET_RPC = "https://api.testnet.solana.com";
+const ALCHEMY_RPC = "https://solana-mainnet.g.alchemy.com/v2/demo";
+const ANKR_RPC = "https://rpc.ankr.com/solana";
+const DRPC_RPC = "https://solana.drpc.org";
+
+const RPC_FALLBACKS = [DEVNET_RPC, TESTNET_RPC, ALCHEMY_RPC, ANKR_RPC, DRPC_RPC];
+
 let svmConnection: Connection | null = null;
 let currentUrl: string = DEFAULT_LOCAL_RPC;
 
@@ -72,6 +80,36 @@ export async function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<
   } catch {
     return false;
   }
+}
+
+export async function testRpcEndpoint(rpcUrl: string): Promise<{ ok: boolean; latency: number; error?: string }> {
+  try {
+    const start = Date.now();
+    const connection = new Connection(rpcUrl, {
+      commitment: "confirmed",
+      confirmTransactionInitialTimeout: 10000,
+    });
+    await connection.getEpochInfo();
+    return { ok: true, latency: Date.now() - start };
+  } catch (error: any) {
+    return { ok: false, latency: 0, error: error.message || String(error) };
+  }
+}
+
+export async function findWorkingRpc(): Promise<string> {
+  const currentUrlTest = await testRpcEndpoint(currentUrl);
+  if (currentUrlTest.ok) {
+    return currentUrl;
+  }
+
+  for (const fallback of RPC_FALLBACKS) {
+    const result = await testRpcEndpoint(fallback);
+    if (result.ok) {
+      return fallback;
+    }
+  }
+
+  return DEFAULT_LOCAL_RPC;
 }
 
 export async function getAccountInfo(
