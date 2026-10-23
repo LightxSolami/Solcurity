@@ -121,7 +121,19 @@ export async function POST(request: NextRequest) {
         const txs = await getRecentTransactions(data.pubkey, 20, rpcUrl);
 
         // Use Groq for comprehensive analysis
-        const { groq } = await import("@/lib/groq");
+        let groq: any;
+        try {
+          const { groq: groqClient } = await import("@/lib/groq");
+          groq = groqClient;
+        } catch (importError) {
+          console.error("Failed to import Groq client:", importError);
+          return NextResponse.json({ error: "AI service unavailable" }, { status: 503 });
+        }
+
+        if (!groq || !process.env.GROQ_API_KEY) {
+          console.error("Groq client not initialized or API key missing");
+          return NextResponse.json({ error: "AI service not configured" }, { status: 503 });
+        }
 
         const accountSummary = info ? `
 Account: ${info.pubkey}
@@ -157,22 +169,37 @@ Format your response as JSON with these keys:
 - recommendations: array of strings
 - score: number 0-100 (higher = more risky)`;
 
-        const chatCompletion = await groq.chat.completions.create({
-          messages: [
-            { role: "system", content: systemPrompt },
-            {
-              role: "user",
-              content: `Analyze this Solana account comprehensively:\n\n${accountSummary}\n\nToken Accounts:\n${tokensSummary}\n\nRecent Transactions:\n${txSummary}\n\nProvide a complete security assessment including risk level, potential issues, and actionable recommendations.`,
-            },
-          ],
-          model: "qwen/qwen3.8-27b",
-          temperature: 0.1,
-          max_tokens: 3000,
-          response_format: { type: "json_object" },
-        });
+        let chatCompletion: any;
+        try {
+          chatCompletion = await groq.chat.completions.create({
+            messages: [
+              { role: "system", content: systemPrompt },
+              {
+                role: "user",
+                content: `Analyze this Solana account comprehensively:\n\n${accountSummary}\n\nToken Accounts:\n${tokensSummary}\n\nRecent Transactions:\n${txSummary}\n\nProvide a complete security assessment including risk level, potential issues, and actionable recommendations.`,
+              },
+            ],
+            model: "qwen/qwen3.8-27b",
+            temperature: 0.1,
+            max_tokens: 3000,
+            response_format: { type: "json_object" },
+          });
+        } catch (groqError: any) {
+          console.error("Groq API error:", groqError);
+          return NextResponse.json({ 
+            error: "AI analysis failed", 
+            details: groqError.message || String(groqError) 
+          }, { status: 502 });
+        }
 
         const response = chatCompletion.choices[0]?.message?.content || "{}";
-        const parsed = JSON.parse(response);
+        let parsed: any;
+        try {
+          parsed = JSON.parse(response);
+        } catch (parseError) {
+          console.error("Failed to parse Groq response:", parseError);
+          return NextResponse.json({ error: "Invalid AI response format" }, { status: 502 });
+        }
 
         return NextResponse.json({
           analysis: {
