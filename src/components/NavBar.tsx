@@ -10,6 +10,8 @@ const navItems = [
   { href: "/svm", label: "SVM Explorer" },
   { href: "/games/snake", label: "Snake Arena" },
   { href: "/tools", label: "Tools" },
+  { href: "/whitepaper", label: "Whitepaper" },
+  { href: "/faq", label: "FAQ" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/security", label: "Security" },
   { href: "/privacy", label: "Privacy" },
