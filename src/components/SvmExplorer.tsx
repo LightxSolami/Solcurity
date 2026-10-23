@@ -48,6 +48,7 @@ export function SvmExplorer() {
   const [epoch, setEpoch] = useState<EpochInfo | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ProgramAnalysisResult | null>(null);
   const [programAccounts, setProgramAccounts] = useState<{ pubkey: string; owner: string; data: string; lamports: number }[]>([]);
+  const [comprehensiveAnalysis, setComprehensiveAnalysis] = useState<any>(null);
   const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
@@ -247,6 +248,30 @@ export function SvmExplorer() {
     }
   }
 
+  async function runComprehensiveAnalysis() {
+    if (!pubkey) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(API_BASE, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "analyze-account", pubkey, rpcUrl }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        setError(err.error || "Failed to run comprehensive analysis");
+        return;
+      }
+      const data = await res.json();
+      setComprehensiveAnalysis(data.analysis);
+    } catch {
+      setError("Network error. Is the SVM endpoint accessible?");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-solana-dark px-4 py-8">
       <div className="max-w-5xl mx-auto">
@@ -394,6 +419,13 @@ export function SvmExplorer() {
               className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Program Accounts
+            </button>
+            <button
+              onClick={runComprehensiveAnalysis}
+              disabled={loading || !pubkey}
+              className="px-4 py-2 bg-solana-blue/20 border border-solana-blue/30 text-solana-blue rounded-xl font-medium hover:bg-solana-blue/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+            >
+              Comprehensive AI Analysis
             </button>
           </div>
         </div>
@@ -569,6 +601,116 @@ export function SvmExplorer() {
                     <li key={i}>{rec}</li>
                   ))}
                 </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {comprehensiveAnalysis && (
+          <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <svg className="w-6 h-6 text-solana-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Comprehensive AI Analysis
+            </h2>
+            
+            <div className="mb-4">
+              <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                comprehensiveAnalysis.riskLevel === "high"
+                  ? "bg-risk-critical/20 text-risk-critical"
+                  : comprehensiveAnalysis.riskLevel === "medium"
+                  ? "bg-risk-moderate/20 text-risk-moderate"
+                  : "bg-solana-green/20 text-solana-green"
+              }`}>
+                Risk Level: {comprehensiveAnalysis.riskLevel?.toUpperCase() || "UNKNOWN"}
+              </span>
+              {comprehensiveAnalysis.score !== undefined && (
+                <span className="ml-3 text-white/50 text-sm">
+                  Score: {comprehensiveAnalysis.score}/100
+                </span>
+              )}
+            </div>
+
+            {comprehensiveAnalysis.summary && (
+              <p className="text-white/70 mb-4">{comprehensiveAnalysis.summary}</p>
+            )}
+
+            {comprehensiveAnalysis.analysis && (
+              <div className="prose prose-invert max-w-none mb-4">
+                <p className="text-white/70">{comprehensiveAnalysis.analysis}</p>
+              </div>
+            )}
+
+            {comprehensiveAnalysis.potentialIssues?.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-white font-medium mb-2">Potential Issues</h3>
+                <ul className="list-disc list-inside text-white/60 text-sm space-y-1">
+                  {comprehensiveAnalysis.potentialIssues.map((issue: string, i: number) => (
+                    <li key={i}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {comprehensiveAnalysis.recommendations?.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-white font-medium mb-2">Recommendations</h3>
+                <ul className="list-disc list-inside text-white/60 text-sm space-y-1">
+                  {comprehensiveAnalysis.recommendations.map((rec: string, i: number) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {comprehensiveAnalysis.account && (
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <h3 className="text-white font-medium mb-2">Account Data Analyzed</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                  <div><span className="text-white/50">Address:</span> <span className="text-white font-mono break-all">{comprehensiveAnalysis.account.pubkey}</span></div>
+                  <div><span className="text-white/50">Balance:</span> <span className="text-white">{comprehensiveAnalysis.account.sol} SOL</span></div>
+                  <div><span className="text-white/50">Type:</span> <span className="text-white/80">{comprehensiveAnalysis.account.accountType || "Unknown"}</span></div>
+                  <div><span className="text-white/50">Owner:</span> <span className="text-white/60 font-mono break-all">{comprehensiveAnalysis.account.owner}</span></div>
+                </div>
+              </div>
+            )}
+
+            {comprehensiveAnalysis.tokens?.length > 0 && (
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <h3 className="text-white font-medium mb-2">Token Accounts ({comprehensiveAnalysis.tokens.length})</h3>
+                <div className="space-y-2">
+                  {comprehensiveAnalysis.tokens.map((token: any, i: number) => (
+                    <div key={i} className="bg-white/5 rounded-lg p-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-white/60">Mint:</span>
+                        <span className="text-white font-mono break-all">{token.mint}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-white/60">Balance:</span>
+                        <span className="text-white">{token.tokenAmount} ({token.decimals} decimals)</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {comprehensiveAnalysis.transactions?.length > 0 && (
+              <div className="border-t border-white/10 pt-4 mt-4">
+                <h3 className="text-white font-medium mb-2">Recent Transactions ({comprehensiveAnalysis.transactions.length})</h3>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {comprehensiveAnalysis.transactions.slice(0, 10).map((tx: any, i: number) => (
+                    <div key={i} className="bg-white/5 rounded-lg p-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-white/60 font-mono">{tx.signature?.slice(0, 16)}...</span>
+                        <span className={tx.meta?.success ? "text-solana-green" : "text-risk-critical"}>
+                          {tx.meta?.success ? "Success" : "Failed"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
