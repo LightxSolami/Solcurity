@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 export function WalletInput() {
   const router = useRouter();
   const [address, setAddress] = useState("");
+  const [rpcUrl, setRpcUrl] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,7 @@ export function WalletInput() {
       const response = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address, rpcUrl: rpcUrl || undefined }),
       });
 
       const data = await response.json();
@@ -55,6 +56,19 @@ export function WalletInput() {
             </svg>
           </div>
         )}
+      </div>
+
+      <div className="relative">
+        <label className="block text-white/60 text-sm mb-2">Custom RPC URL (optional)</label>
+        <input
+          type="url"
+          value={rpcUrl}
+          onChange={(e) => setRpcUrl(e.target.value)}
+          placeholder="https://your-rpc-endpoint.com"
+          className="w-full px-5 py-4 bg-solana-card border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-solana-purple focus:border-transparent text-base"
+          disabled={loading}
+        />
+        <p className="text-xs text-white/40 mt-1">Use your own RPC endpoint for higher rate limits (Alchemy, QuickNode, Helius, etc.)</p>
       </div>
 
       {error && (

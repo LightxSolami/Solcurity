@@ -33,6 +33,7 @@ export type SolanaAddressInput = z.infer<typeof SolanaAddressSchema>;
 
 export const ScanRequestSchema = z.object({
   address: SolanaAddressSchema,
+  rpcUrl: z.string().url().optional(),
 });
 
 export type ScanRequest = z.infer<typeof ScanRequestSchema>;

@@ -12,11 +12,11 @@ import {
 } from "@/lib/scoring/risk-engine";
 import { ScanResult, SolanaWalletInfo, TokenInfo, TransactionInfo, ProgramInteraction, SecurityFinding } from "@/lib/types";
 
-export async function runScan(address: string): Promise<ScanResult> {
+export async function runScan(address: string, rpcUrl?: string): Promise<ScanResult> {
   const allFailedChecks: string[] = [];
 
   // Create a connection for the main operations
-  const connection = createSolanaConnection();
+  const connection = createSolanaConnection(rpcUrl);
 
   // 1. Wallet analysis - with retry
   let wallet: SolanaWalletInfo;
@@ -76,7 +76,7 @@ export async function runScan(address: string): Promise<ScanResult> {
         allProgramIds.add(pid);
       }
     }
-    programs = await analyzePrograms(connection, address, Array.from(allProgramIds));
+    programs = await analyzePrograms(createSolanaConnection(rpcUrl), address, Array.from(allProgramIds));
   } catch (err) {
     allFailedChecks.push("program_analysis_failed");
   }

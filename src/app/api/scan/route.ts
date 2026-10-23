@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Run the scan
-    const result = await runScan(address);
+    const result = await runScan(address, parsed.data.rpcUrl);
 
     // Cache the result
     setCachedScan(address, result);
