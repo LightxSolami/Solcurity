@@ -263,10 +263,11 @@ export function SvmExplorer() {
                 value={rpcUrl}
                 onChange={(e) => setRpcUrl(e.target.value)}
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-solana-purple"
+                style={{ backgroundColor: "#111133", color: "white" }}
               >
-                <option value="http://127.0.0.1:8899">Local Validator (solana-test-validator)</option>
-                <option value="https://api.devnet.solana.com">Devnet</option>
-                <option value="https://api.testnet.solana.com">Testnet</option>
+                <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
+                <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
+                <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
               </select>
             </div>
             <div className="flex items-end">
