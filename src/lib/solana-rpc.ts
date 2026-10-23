@@ -3,10 +3,20 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL, type GetProgramAccountsConfig,
 // Multiple free RPC endpoints to try in order
 const FREE_RPC_ENDPOINTS = [
   process.env.SOLANARPCURL,
+  // Primary reliable free endpoints
   "https://solana-mainnet.g.alchemy.com/v2/demo",
   "https://rpc.ankr.com/solana",
   "https://solana.drpc.org",
+  // Additional free endpoints
   "https://api.mainnet-beta.solana.com",
+  "https://solana-mainnet.rpc.extrnode.com",
+  "https://rpc.helius.xyz/?api-key=helius-free",
+  "https://solana-rpc.publicnode.com",
+  "https://mainnet.helius-rpc.com",
+  "https://rpc.tron.network/solana",
+  "https://solana-mainnet.chainstacklabs.com",
+  "https://rpc.lokijs.com/solana",
+  "https://solana.api.syndica.io/api-key/free/solana-mainnet",
 ].filter(Boolean) as string[];
 
 let currentRpcIndex = 0;

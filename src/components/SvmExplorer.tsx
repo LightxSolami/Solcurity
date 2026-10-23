@@ -287,9 +287,21 @@ export function SvmExplorer() {
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-solana-purple"
                 style={{ backgroundColor: "#111133", color: "white" }}
               >
-                <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
-                <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
-                <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
+                <optgroup label="Local & Testnets" style={{ backgroundColor: "#111133", color: "white" }}>
+                  <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
+                  <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
+                  <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
+                </optgroup>
+                <optgroup label="Free Mainnet RPCs" style={{ backgroundColor: "#111133", color: "white" }}>
+                  <option value="https://solana-mainnet.g.alchemy.com/v2/demo" style={{ backgroundColor: "#111133", color: "white" }}>Alchemy Demo</option>
+                  <option value="https://rpc.ankr.com/solana" style={{ backgroundColor: "#111133", color: "white" }}>Ankr</option>
+                  <option value="https://solana.drpc.org" style={{ backgroundColor: "#111133", color: "white" }}>DRPC</option>
+                  <option value="https://solana-mainnet.rpc.extrnode.com" style={{ backgroundColor: "#111133", color: "white" }}>Extrnode</option>
+                  <option value="https://solana-rpc.publicnode.com" style={{ backgroundColor: "#111133", color: "white" }}>PublicNode</option>
+                  <option value="https://solana-mainnet.chainstacklabs.com" style={{ backgroundColor: "#111133", color: "white" }}>Chainstack Labs</option>
+                  <option value="https://solana.api.syndica.io/api-key/free/solana-mainnet" style={{ backgroundColor: "#111133", color: "white" }}>Syndica Free</option>
+                  <option value="https://api.mainnet-beta.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Official Mainnet Beta</option>
+                </optgroup>
               </select>
             </div>
             <div className="flex items-end">

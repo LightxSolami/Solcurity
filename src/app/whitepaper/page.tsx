@@ -314,7 +314,7 @@ export default function WhitepaperPage() {
         <div className="prose prose-invert max-w-none">
           <div className="grid md:grid-cols-3 gap-4">
             <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q4 2024</h3>
+              <h3 className="font-bold text-white mb-2">Q4 2026</h3>
               <ul className="text-white/60 text-sm space-y-1">
                 <li>✅ Wallet Scanner MVP</li>
                 <li>✅ SVM Explorer with AI</li>
@@ -323,7 +323,7 @@ export default function WhitepaperPage() {
               </ul>
             </div>
             <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q1 2025</h3>
+              <h3 className="font-bold text-white mb-2">Q1 2027</h3>
               <ul className="text-white/60 text-sm space-y-1">
                 <li>Real-time monitoring alerts</li>
                 <li>Browser extension</li>
@@ -332,7 +332,7 @@ export default function WhitepaperPage() {
               </ul>
             </div>
             <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q2 2025+</h3>
+              <h3 className="font-bold text-white mb-2">Q2 2027+</h3>
               <ul className="text-white/60 text-sm space-y-1">
                 <li>Formal verification integration</li>
                 <li>DAO/governance security module</li>
