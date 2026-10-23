@@ -232,20 +232,41 @@ export async function airdropSol(
   pubkey: string,
   amount: number,
   rpcUrl: string = DEFAULT_LOCAL_RPC
-): Promise<string | null> {
+): Promise<{ signature: string | null; error?: string }> {
   try {
     const connection = getSvmConnection(rpcUrl);
     const publicKey = new PublicKey(pubkey);
     const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
 
+    // Check if using mainnet - airdrop doesn't work on mainnet
+    const isMainnet = rpcUrl.includes("mainnet-beta") || rpcUrl.includes("api.mainnet-beta");
+    if (isMainnet) {
+      return { 
+        signature: null, 
+        error: "Airdrop not available on mainnet. Use local validator, devnet, or testnet." 
+      };
+    }
+
     const signature = await connection.requestAirdrop(publicKey, lamports);
 
     await connection.confirmTransaction(signature, "confirmed");
 
-    return signature;
-  } catch (error) {
+    return { signature, error: undefined };
+  } catch (error: any) {
     console.error("Error requesting airdrop:", error);
-    return null;
+    const errorMsg = error.message || String(error);
+    
+    if (errorMsg.includes("429") || errorMsg.includes("rate limit") || errorMsg.includes("Too Many Requests")) {
+      return { signature: null, error: "Faucet rate limit reached. Try again later or use a local validator." };
+    }
+    if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("ECONNREFUSED")) {
+      return { signature: null, error: "Cannot connect to RPC endpoint. Is the local validator running?" };
+    }
+    if (errorMsg.includes("blockhash")) {
+      return { signature: null, error: "RPC endpoint doesn't support airdrop. Use local validator or devnet." };
+    }
+    
+    return { signature: null, error: `Airdrop failed: ${errorMsg}` };
   }
 }
 

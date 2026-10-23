@@ -92,8 +92,11 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "pubkey required" }, { status: 400 });
         }
         const amount = data.amount || Math.random() * 5 + 0.1;
-        const signature = await airdropSol(data.pubkey, amount, rpcUrl);
-        return NextResponse.json({ signature, amount });
+        const result = await airdropSol(data.pubkey, amount, rpcUrl);
+        if (result.error) {
+          return NextResponse.json({ error: result.error, amount }, { status: 400 });
+        }
+        return NextResponse.json({ signature: result.signature, amount });
       }
 
       case "analyze": {

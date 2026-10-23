@@ -189,9 +189,6 @@ export function SvmExplorer() {
       }
       const data = await res.json() as AirdropResponse;
       setAirdropped(data);
-      if (!data.signature) {
-        setError("Airdrop failed. Faucet rate limit may be reached. Try again later or reduce amount.");
-      }
     } catch {
       setError("Network error. Is the SVM endpoint accessible?");
     } finally {
