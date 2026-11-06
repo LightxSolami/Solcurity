@@ -21,7 +21,7 @@ export default function FAQPage() {
         },
         {
           q: "Do I need to connect my wallet?",
-          a: "No. Solcurity only requires a public Solana address (44-character base58 string). We never ask for private keys, seed phrases, or wallet connections for scanning. Wallet connection is only used for the Snake Arena game betting feature."
+          a: "No. Solcurity only requires a public Solana address (44-character base58 string). We never ask for private keys, seed phrases, or wallet connections for scanning. Connecting a wallet in Snake Arena is optional and only reads your public address; the free practice game does not stake SOL."
         },
         {
           q: "What wallets are supported?",

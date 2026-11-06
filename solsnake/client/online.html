@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>SOLSNAKE ARENA · Online</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://cdn.jsdelivr.net/npm/@solana/web3.js@1.98.4/lib/index.iife.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--ink:#efeaff;--dim:#9a8fc0;--sol:#14f195;--vio:#9945ff;--glass:rgba(20,12,44,.66);--edge:rgba(153,69,255,.5)}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:#05030c;color:var(--ink);font-family:'Chakra Petch',system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(14px + env(safe-area-inset-top,0px)) 14px calc(14px + env(safe-area-inset-bottom,0px));text-align:center;background:radial-gradient(ellipse at center,rgba(5,3,12,.4),rgba(5,3,12,.92))}
+.hide{display:none!important}
+h1{margin:0;font-size:clamp(36px,9vw,76px);background:linear-gradient(90deg,var(--sol),var(--vio));-webkit-background-clip:text;background-clip:text;color:transparent}
+.panel{background:var(--glass);border:1px solid var(--edge);backdrop-filter:blur(12px);border-radius:14px;padding:12px;display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+button,input{font:inherit;color:var(--ink);background:rgba(153,69,255,.16);border:1px solid var(--edge);border-radius:10px;padding:9px 14px}
+button{cursor:pointer}button:hover{background:rgba(153,69,255,.4)}button:focus-visible,input:focus-visible{outline:2px solid var(--sol)}
+button.sel{border-color:var(--sol);box-shadow:0 0 12px rgba(20,241,149,.4)}
+button.go{background:linear-gradient(90deg,var(--sol),var(--vio));color:#05030c;font-weight:700;font-size:20px;padding:12px 44px;border:0}
+.note{font-size:12px;color:var(--dim);max-width:460px;margin:0}
+.box{position:fixed;background:var(--glass);border:1px solid var(--edge);border-radius:10px;padding:6px 12px;font-size:13px}
+#lb{top:calc(10px + env(safe-area-inset-top,0px));right:12px;min-width:140px;text-align:left}#lb div{display:flex;justify-content:space-between;gap:10px}
+#st{top:calc(10px + env(safe-area-inset-top,0px));left:12px}#st b{font-size:22px}
+#bb{position:fixed;right:18px;bottom:calc(22px + env(safe-area-inset-bottom,0px));width:84px;height:84px;border-radius:50%;font-weight:700;background:rgba(20,241,149,.18);border-color:var(--sol)}
+.big{font-size:54px;font-weight:700;color:var(--sol)}
+</style></head><body>
+<canvas id="c"></canvas>
+<div id="hud" class="hide"><div class="box" id="st"><div>Alive <b id="al">5</b>/5</div><div>Length <b id="ln">14</b></div></div><div class="box" id="lb"></div><button id="bb">BOOST</button></div>
+<div id="menu" class="ov">
+ <h1>SOLSNAKE ONLINE</h1>
+ <p class="note">Up to 5 real players per match. Empty seats are filled with bots after 8 seconds. Free rooms only: paid rooms are locked.</p>
+ <div class="panel"><input id="nm" maxlength="12" placeholder="Your name" value="Player" aria-label="Name"><button class="go" id="play">Find match</button></div>
+ <div class="panel" id="tiers"><button data-t="free" class="sel">Free</button><button data-t="0.05">0.05 SOL</button><button data-t="0.1">0.1 SOL</button><button data-t="0.5">0.5 SOL</button><button data-t="1">1 SOL</button></div>
+ <div class="panel"><button id="wal">Connect wallet</button><button id="rfd" class="hide">Reclaim stake</button></div>
+ <p class="note" id="msg">Aim with mouse or finger. Hold click, Space or BOOST to sprint.</p>
+ <div class="panel"><button id="mm">Music on</button><button id="ss">SFX on</button></div>
+</div>
+<div id="dep" class="ov hide"><div class="big" id="dt">Confirm deposit</div><div class="panel" id="dd" style="flex-direction:column;max-width:480px"></div>
+ <div class="panel"><button class="go" id="dgo" style="font-size:16px">Approve in wallet</button><button id="dno">Cancel</button></div>
+ <p class="note">Your deposit goes to an escrow account owned by the program, not to us. If the match never settles you can reclaim it after 1 hour. The network fee is paid separately.</p></div>
+<div id="over" class="ov hide"><div class="big" id="ot">Eliminated</div><div class="panel" id="od"></div><div class="panel hide" id="approval"><div id="approvalStatus">All five players must approve this exact winner and payout in their wallet.</div><button class="go" id="approve">Approve settlement</button></div><button class="go" id="again" style="font-size:16px">Play again</button></div>
+<script>
+(function(){
+const $=i=>document.getElementById(i),cv=$('c'),x=cv.getContext('2d');
+let W,H,dpr,inten=.25,tt=0;const rnd=Math.random;
+function rs(){dpr=Math.min(devicePixelRatio,2);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr}addEventListener('resize',rs);rs();
+/* ===== AUDIO ===== */
+let AC,mg,mu,sg,nb,bg,musicOn=true,sfxOn=true,step=0,nt=0;const SPB=60/112/4,mh=m=>440*2**((m-69)/12);
+const CH=[[57,60,64],[53,57,60],[60,64,67],[55,59,62]],BS=[33,29,36,31];
+function aud(){if(AC){AC.resume();return}
+ AC=new (window.AudioContext||window.webkitAudioContext)();const cp=AC.createDynamicsCompressor();mg=AC.createGain();mg.gain.value=.8;mu=AC.createGain();mu.gain.value=.5;sg=AC.createGain();sg.gain.value=.8;
+ const dl=AC.createDelay();dl.delayTime.value=SPB*3;const fb=AC.createGain();fb.gain.value=.32,dls=AC.createGain();dls.gain.value=.5;dl.connect(fb);fb.connect(dl);mu.connect(dls);dls.connect(dl);dl.connect(mg);
+ mu.connect(mg);sg.connect(mg);mg.connect(cp);cp.connect(AC.destination);
+ nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=rnd()*2-1;
+ const bs=AC.createBufferSource();bs.buffer=nb;bs.loop=true;const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=900;f.Q.value=.8;bg=AC.createGain();bg.gain.value=0;bs.connect(f);f.connect(bg);bg.connect(sg);bs.start();
+ nt=AC.currentTime+.1;setInterval(()=>{while(nt<AC.currentTime+.15){seq(step,nt);nt+=SPB;step=(step+1)%64}},25)}
+function note(t,f,d,ty,v,dst,cut,att){const o=AC.createOscillator(),g=AC.createGain(),fl=AC.createBiquadFilter();o.type=ty;o.frequency.value=f;fl.type='lowpass';fl.frequency.value=cut||4000;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+(att||.005));g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(fl);fl.connect(g);g.connect(dst);o.start(t);o.stop(t+d+.05)}
+function glide(t,a,b,d,ty,v){const o=AC.createOscillator(),g=AC.createGain();o.type=ty;o.frequency.setValueAtTime(a,t);o.frequency.exponentialRampToValueAtTime(b,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(sg);o.start(t);o.stop(t+d+.05)}
+function noise(t,hp,d,v,dst,ty){const s=AC.createBufferSource();s.buffer=nb;const f=AC.createBiquadFilter();f.type=ty||'highpass';f.frequency.value=hp;const g=AC.createGain();g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f);f.connect(g);g.connect(dst);s.start(t,rnd()*.5);s.stop(t+d+.02)}
+function kick(t){const o=AC.createOscillator(),g=AC.createGain();o.frequency.setValueAtTime(160,t);o.frequency.exponentialRampToValueAtTime(42,t+.13);g.gain.setValueAtTime(.9,t);g.gain.exponentialRampToValueAtTime(.001,t+.32);o.connect(g);g.connect(mg);o.start(t);o.stop(t+.35);mu.gain.setValueAtTime(.18,t);mu.gain.linearRampToValueAtTime(.5,t+.2)}
+function seq(s,t){if(!musicOn)return;const b=(s>>4)&3,k=s&15,ch=CH[b],I=inten;
+ if(k===0)ch.forEach((m,i)=>{note(t,mh(m),SPB*15,'sawtooth',.045,mu,500+I*900,.5);note(t,mh(m)*1.004,SPB*15,'sawtooth',.03,mu,700,.6)});
+ if(I>.15&&k%4===0)kick(t);
+ if(k%4===2)noise(t,7000,.05,.05+I*.06,mu);
+ if(I>.7&&k%2===1)noise(t,8000,.03,.04,mu);
+ if(I>.35&&(k===4||k===12))noise(t,1500,.16,.3,mu,'bandpass');
+ if(I>.2&&[0,3,6,8,11,14].includes(k))note(t,mh(BS[b]+(k===6||k===14?12:0)),SPB*1.7,'sawtooth',.24,mu,260+I*800);
+ if(I>.45&&(k%2===0||I>.8))note(t,mh(ch[k%3]+((k&4)?24:12)),SPB*1.3,'square',.06,mu,2600)}
+function sfx(k,p){if(!AC||!sfxOn)return;const t=AC.currentTime;
+ if(k==='eat'){note(t,520+p*60,.13,'sine',.28,sg,6000);note(t,(520+p*60)*1.5,.1,'triangle',.1,sg,6000)}
+ if(k==='kill'){glide(t,700,120,.35,'sawtooth',.22);noise(t,1200,.25,.3,sg);note(t+.08,880,.2,'square',.1,sg,3000)}
+ if(k==='die'){glide(t,320,38,1,'sawtooth',.35);noise(t,300,.7,.4,sg,'lowpass')}
+ if(k==='win')[0,4,7,12,16].forEach((m,i)=>note(t+i*.09,mh(69+m),.5,'triangle',.22,sg,5000));
+ if(k==='go')glide(t,200,900,.4,'sine',.25);if(k==='tick')note(t,660,.08,'sine',.2,sg)}
+function setBoostSnd(on){if(bg)bg.gain.setTargetAtTime(on&&sfxOn?.16:0,AC.currentTime,.05)}
+
+
+const PAL=[['#14f195','#9945ff'],['#ff5a5a','#ffb347'],['#38d5ff','#3d7bff'],['#c3ff3d','#14f195'],['#ff3df2','#9945ff']],FC=['#14f195','#9945ff','#38d5ff','#ffd23d','#ff3df2'],R=1700;
+const gc={};function glow(c){return gc[c]||(gc[c]=(()=>{const o=document.createElement('canvas');o.width=o.height=64;const g=o.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,c);r.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return o})())}
+const rgb=c=>[1,3,5].map(i=>parseInt(c.substr(i,2),16));function mix(a,b,t){const p=rgb(a),q=rgb(b);return`rgb(${p[0]+(q[0]-p[0])*t|0},${p[1]+(q[1]-p[1])*t|0},${p[2]+(q[2]-p[2])*t|0})`}
+let tier='free',wallet=null,prov=null,cfg={},curDep=null,pendingSettlement=null;let ws,snaps=[],state='menu',prevL=14,prevK=0,prevAl=1,deadAt=0,cx=0,cy=0,zoom=.7,aim=0,boost=0,keyT=0,hudT=0,over=false;
+function connect(){aud();if(tier!=='free'&&!wallet){$('msg').textContent='Connect a wallet first.';return}$('msg').textContent='Connecting…';const p=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(p+'://'+location.host);
+ ws.onopen=()=>ws.send(JSON.stringify({t:'join',name:$('nm').value||'Player',tier,wallet:wallet&&wallet.toString()}));
+ ws.onerror=()=>$('msg').textContent='Cannot reach the server. Is it running?';
+ ws.onclose=()=>{if(state==='play'&&!over)showOver('Disconnected',[])};
+ ws.onmessage=e=>{const m=JSON.parse(e.data);
+  if(m.t==='wait')$('msg').textContent='Waiting for players… ('+m.n+'/5, bots join in 8 s)';
+  else if(m.t==='cfg')cfg=m;
+  else if(m.t==='err')$('msg').textContent=m.msg;
+  else if(m.t==='deposit')askDeposit(m);
+  else if(m.t==='abort'){$('dep').classList.add('hide');pend(m);$('msg').textContent='Not everyone deposited in time. Your deposit (if any) can be reclaimed after 1 hour.'}
+  else if(m.t==='settled'){const paid=pendingSettlement&&wallet&&wallet.toString()===pendingSettlement.winner;$('od').innerHTML+='<div>'+(paid?'Your prize was paid.':'Match payout confirmed on-chain.')+' Tx '+m.sig.slice(0,12)+'…</div>';$('approvalStatus').textContent='Payout confirmed on-chain.';$('approve').classList.add('hide');pendingSettlement=null}
+  else if(m.t==='settle_failed'){$('approvalStatus').textContent=m.msg;$('approve').classList.add('hide');$('msg').textContent=m.msg}
+  else if(m.t==='settlement_request'){pendingSettlement=m;$('approve').classList.remove('hide');$('approve').disabled=false;$('approvalStatus').textContent='Last snake alive: '+m.winner+'. Review and approve the payout transaction in your wallet. All 5 players must approve.';$('approval').classList.remove('hide')}
+  else if(m.t==='settlement_progress'){$('approvalStatus').textContent='Player approvals: '+m.count+'/'+m.total+'. Keep this page open.'}
+  else if(m.t==='start'){state='play';over=false;pendingSettlement=null;snaps=[];prevL=14;prevK=0;prevAl=1;$('approval').classList.add('hide');$('approve').classList.remove('hide');$('approve').disabled=false;$('menu').classList.add('hide');$('over').classList.add('hide');$('hud').classList.remove('hide');sfx('go')}
+  else if(m.t==='s'){m.ts=performance.now();snaps.push(m);if(snaps.length>6)snaps.shift();onSnap(m)}
+  else if(m.t==='end'&&!over){if(m.place===1)sfx('win');showOver(m.place===1?'Victory':'Eliminated',['Placed #'+m.place+' of 5','Length '+m.len,'Kills '+m.kills],tier!=='free')}}}
+const DISC={join:[244,8,47,130,192,59,179,44],refund:[2,96,183,251,63,208,46,46]};
+const getProv=()=>{const w=window;return(w.phantom&&w.phantom.solana&&w.phantom.solana.isPhantom&&w.phantom.solana)||(w.solflare&&w.solflare.isSolflare&&w.solflare)||(w.backpack&&w.backpack.solana)||(w.solana&&w.solana.connect&&w.solana)||null};
+async function sendIx(m,name){const S=solanaWeb3,conn=new S.Connection(m.rpc,'confirmed'),me=prov.publicKey,P=k=>new S.PublicKey(k);
+ const ix=new S.TransactionInstruction({programId:P(m.programId),data:Uint8Array.from(DISC[name]),keys:[{pubkey:P(m.gm),isSigner:false,isWritable:true},{pubkey:P(m.vault),isSigner:false,isWritable:true},{pubkey:me,isSigner:true,isWritable:true},{pubkey:S.SystemProgram.programId,isSigner:false,isWritable:false}]});
+ const tx=new S.Transaction().add(ix);tx.feePayer=me;tx.recentBlockhash=(await conn.getLatestBlockhash()).blockhash;
+ const r=await prov.signAndSendTransaction(tx);await conn.confirmTransaction(r.signature,'confirmed');return r.signature}
+function askDeposit(m){curDep=m;const sol=Number(m.fee)/1e9,pool=sol*5,devFee=pool*0.005;$('dd').innerHTML='<div>Amount <b>'+sol+' SOL</b></div><div>Network <b>'+m.cluster+'</b></div><div>Escrow account <b>'+m.vault.slice(0,6)+'…'+m.vault.slice(-4)+'</b></div><div>Program <b>'+m.programId.slice(0,6)+'…'+m.programId.slice(-4)+'</b></div><div>Prize pool when full <b>'+pool+' SOL</b></div><div>Developer fee <b>'+devFee+' SOL (0.5%)</b></div>';$('menu').classList.add('hide');$('dep').classList.remove('hide')}
+$('dgo').onclick=async()=>{const m=curDep;try{$('dgo').disabled=true;pend(m);await sendIx(m,'join');$('dt').textContent='Deposited. Waiting for the others…';$('dd').innerHTML='<div>Deposit confirmed on-chain.</div>'}catch(e){$('dt').textContent='Deposit failed or declined';$('dd').innerHTML='<div>'+String(e.message||e).slice(0,120)+'</div>'}finally{$('dgo').disabled=false}};
+$('approve').onclick=async()=>{try{if(!pendingSettlement||!prov||!wallet)throw new Error('Reconnect the wallet used to enter this match.');$('approve').disabled=true;$('approvalStatus').textContent='Review the settlement request in your wallet…';const bytes=Uint8Array.from(atob(pendingSettlement.transaction),c=>c.charCodeAt(0));const tx=window.solanaWeb3.Transaction.from(bytes);const signed=await prov.signTransaction(tx);const wire=signed.serialize({requireAllSignatures:false,verifySignatures:false});let binary='';for(const byte of wire)binary+=String.fromCharCode(byte);ws.send(JSON.stringify({t:'approve_settlement',transaction:btoa(binary)}));$('approvalStatus').textContent='Approval sent. Waiting for all five players…'}catch(e){$('approvalStatus').textContent='Approval not sent: '+String(e.message||e).slice(0,120)}finally{$('approve').disabled=false}};
+$('dno').onclick=()=>{$('dep').classList.add('hide');$('menu').classList.remove('hide');try{ws.close()}catch(e){}};
+function pend(m){try{localStorage.setItem('ss_pending',JSON.stringify({gm:m.gm,vault:m.vault,programId:m.programId,rpc:m.rpc,t:Date.now()}));$('rfd').classList.remove('hide')}catch(e){}}
+$('rfd').onclick=async()=>{try{const m=JSON.parse(localStorage.getItem('ss_pending'));if(!prov)throw new Error('Connect your wallet first');$('msg').textContent='Requesting refund…';await sendIx(m,'refund');localStorage.removeItem('ss_pending');$('rfd').classList.add('hide');$('msg').textContent='Refund sent.'}catch(e){$('msg').textContent='Refund failed: '+String(e.message||e).slice(0,100)+' (only possible 1 hour after the match was created)'}};
+try{if(localStorage.getItem('ss_pending'))$('rfd').classList.remove('hide')}catch(e){}
+$('wal').onclick=async()=>{try{if(wallet){await prov.disconnect();wallet=null;$('wal').textContent='Connect wallet';return}
+ prov=getProv();if(!prov){$('msg').textContent='No Solana wallet found. Install Phantom, Solflare or Backpack.';return}
+ const r=await prov.connect();wallet=(r&&r.publicKey?r.publicKey:prov.publicKey);const k=wallet.toString();$('wal').textContent=k.slice(0,4)+'…'+k.slice(-4)+' · Disconnect'}catch(e){$('msg').textContent='Wallet connection declined.'}};
+document.querySelectorAll('#tiers button').forEach(b=>b.onclick=()=>{tier=b.dataset.t;document.querySelectorAll('#tiers button').forEach(x=>x.classList.toggle('sel',x===b))});
+function onSnap(m){const me=m.sn[m.me];if(me.l>prevL)sfx('eat',Math.min(8,me.l-prevL));if(me.k>prevK)sfx('kill');prevL=me.l;prevK=me.k;
+ const al=m.sn.filter(s=>s.al).length;inten+=((.3+(me.b?.25:0)+(5-al)/4*.4)-inten)*.1;
+ if(prevAl&&!me.al){sfx('die');deadAt=performance.now();setBoostSnd(0)}prevAl=me.al;
+ if(!me.al&&!over&&performance.now()-deadAt>1200)showOver('Eliminated',['Placed #'+(me.pl||5)+' of 5','Length '+me.l,'Kills '+me.k])}
+function showOver(t,d,keepConnection=false){over=true;$('ot').textContent=t;$('od').innerHTML=d.map(s=>'<div>'+s+'</div>').join('');$('hud').classList.add('hide');$('over').classList.remove('hide');if(!keepConnection)try{ws.close()}catch(e){}}
+function cur(){if(!snaps.length)return null;const rt=performance.now()-100;let a=snaps[0],b=snaps[snaps.length-1];for(let i=snaps.length-1;i>0;i--)if(snaps[i-1].ts<=rt){a=snaps[i-1];b=snaps[i];break}
+ const al=b.ts>a.ts?Math.max(0,Math.min(1,(rt-a.ts)/(b.ts-a.ts))):1;
+ const sn=b.sn.map((s,i)=>{const o=a.sn[i],g=[];for(let j=0;j<s.g.length;j++)g.push(o&&j<o.g.length?o.g[j]+(s.g[j]-o.g[j])*al:s.g[j]);return{...s,g}});return{me:b.me,sn,f:b.f}}
+setInterval(()=>{if(ws&&ws.readyState===1&&state==='play'&&!over){if(keyT){const s=snaps.length&&snaps[snaps.length-1].sn[snaps[snaps.length-1].me];if(s)aim=s.a+keyT*1.1}ws.send(JSON.stringify({t:'in',a:aim,b:boost}))}},33);
+function draw(dt){tt+=dt;x.setTransform(dpr,0,0,dpr,0,0);x.fillStyle='#05030c';x.fillRect(0,0,W,H);const c=cur();
+ if(c){const m=c.sn[c.me];if(m.g.length){const k=1-Math.exp(-dt*9);cx+=(m.g[0]-cx)*k;cy+=(m.g[1]-cy)*k}zoom+=((Math.min(W,H)/620/(1+Math.min(m.l,300)*.0016))-zoom)*(1-Math.exp(-dt*3))}else{cx=Math.cos(tt*.1)*400;cy=Math.sin(tt*.1)*400;zoom=.7}
+ x.save();x.translate(W/2,H/2);x.scale(zoom,zoom);x.translate(-cx,-cy);
+ const g=x.createRadialGradient(0,0,0,0,0,R);g.addColorStop(0,'#170c34');g.addColorStop(1,'#0a0618');x.fillStyle=g;x.beginPath();x.arc(0,0,R,0,6.283);x.fill();
+ x.fillStyle='rgba(153,69,255,.25)';const gs=70,vw=W/zoom/2+gs,vh=H/zoom/2+gs;for(let a=Math.floor((cx-vw)/gs)*gs;a<cx+vw;a+=gs)for(let b=Math.floor((cy-vh)/gs)*gs;b<cy+vh;b+=gs)if(a*a+b*b<R*R)x.fillRect(a-1.5,b-1.5,3,3);
+ x.lineWidth=12;x.strokeStyle='rgba(255,61,110,.7)';x.beginPath();x.arc(0,0,R+4,0,6.283);x.stroke();
+ if(c){x.globalCompositeOperation='lighter';for(const f of c.f){const s=20*(1+.25*Math.sin(tt*4+f[0]))*f[3]**.4;x.globalAlpha=.8;x.drawImage(glow(FC[f[2]%5]),f[0]-s,f[1]-s,s*2,s*2);x.globalAlpha=1;x.fillStyle=FC[f[2]%5];x.beginPath();x.arc(f[0],f[1],3+f[3]*1.4,0,6.283);x.fill()}
+  for(const s of c.sn){if(!s.al)continue;const r=7+Math.min(s.l,320)*.028,gm=glow(PAL[s.i][0]);x.globalAlpha=s.b?.5:.22;for(let j=0;j<s.g.length;j+=6){const z=r*(s.b?4:3);x.drawImage(gm,s.g[j]-z,s.g[j+1]-z,z*2,z*2)}}
+  x.globalCompositeOperation='source-over';x.globalAlpha=1;
+  for(const s of c.sn){if(!s.al)continue;const r=7+Math.min(s.l,320)*.028,n=s.g.length/2,P=PAL[s.i];
+   for(let i=n-1;i>=0;i--){x.fillStyle=mix(P[0],P[1],.5+.5*Math.sin(i*.22-tt*3));x.beginPath();x.arc(s.g[i*2],s.g[i*2+1],r*(1-.38*i/n),0,6.283);x.fill()}
+   const hx=s.g[0],hy=s.g[1],ca=Math.cos(s.a),sa=Math.sin(s.a);x.fillStyle='#fff';for(const e of[-1,1]){const ex=hx+ca*r*.35-sa*r*.55*e,ey=hy+sa*r*.35+ca*r*.55*e;x.beginPath();x.arc(ex,ey,r*.36,0,6.283);x.fill();x.fillStyle='#05030c';x.beginPath();x.arc(ex+ca*r*.12,ey+sa*r*.12,r*.18,0,6.283);x.fill();x.fillStyle='#fff'}
+   x.font='bold 13px Chakra Petch,sans-serif';x.textAlign='center';x.fillStyle=s.i===c.me?'#14f195':'rgba(255,255,255,.8)';x.fillText(s.nm,hx,hy-r-10)}}
+ x.restore();hudT-=dt;if(c&&hudT<=0){hudT=.25;const a=c.sn.filter(s=>s.al).sort((p,q)=>q.l-p.l);$('al').textContent=a.length;$('ln').textContent=c.sn[c.me].l;$('lb').innerHTML=a.map(s=>`<div style="color:${s.i===c.me?'#14f195':'#efeaff'}"><span>${s.nm}</span><b>${s.l}</b></div>`).join('')}}
+let lt=performance.now();(function f(n){requestAnimationFrame(f);const dt=Math.min((n-lt)/1000,.05);lt=n;if(AC&&state!=='play')inten+=(.25-inten)*dt;draw(dt)})(lt);
+cv.addEventListener('pointermove',e=>{aim=Math.atan2(e.clientY-H/2,e.clientX-W/2)});
+cv.addEventListener('pointerdown',e=>{aim=Math.atan2(e.clientY-H/2,e.clientX-W/2);if(e.pointerType==='mouse'){boost=1;setBoostSnd(1)}});
+addEventListener('pointerup',e=>{if(e.pointerType==='mouse'){boost=0;setBoostSnd(0)}});
+const bb=$('bb');bb.addEventListener('pointerdown',e=>{e.stopPropagation();boost=1;setBoostSnd(1)});['pointerup','pointerleave','pointercancel'].forEach(v=>bb.addEventListener(v,()=>{boost=0;setBoostSnd(0)}));
+addEventListener('keydown',e=>{if(e.code==='ArrowLeft'||e.code==='KeyA')keyT=-1;else if(e.code==='ArrowRight'||e.code==='KeyD')keyT=1;else if(e.code==='Space'){e.preventDefault();boost=1;setBoostSnd(1)}});
+addEventListener('keyup',e=>{if(['ArrowLeft','KeyA','ArrowRight','KeyD'].includes(e.code))keyT=0;if(e.code==='Space'){boost=0;setBoostSnd(0)}});
+$('play').onclick=connect;$('again').onclick=()=>{state='menu';$('over').classList.add('hide');$('menu').classList.remove('hide');connect()};
+$('mm').onclick=()=>{aud();musicOn=!musicOn;$('mm').textContent='Music '+(musicOn?'on':'off')};
+$('ss').onclick=()=>{aud();sfxOn=!sfxOn;$('ss').textContent='SFX '+(sfxOn?'on':'off');if(!sfxOn)setBoostSnd(0)};
+})();
+</script></body></html>
