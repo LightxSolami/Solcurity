@@ -19,6 +19,46 @@ body {
   min-height: 100vh;
 }
 
+.site-footer {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(153, 69, 255, 0.3);
+  background: #05030c;
+}
+
+.site-footer::before {
+  position: absolute;
+  z-index: -1;
+  inset: -100%;
+  background:
+    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.17), transparent 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.22), transparent 38%),
+    radial-gradient(ellipse at 50% 100%, rgba(20, 100, 180, 0.15), transparent 40%);
+  content: "";
+  animation: solsnake-footer-drift 18s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.site-footer__content {
+  position: relative;
+}
+
+@keyframes solsnake-footer-drift {
+  from {
+    transform: translate3d(-3%, 2%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(3%, -2%, 0) scale(1.08);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-footer::before {
+    animation: none;
+  }
+}
+
 @layer utilities {
   .text-balance {
     text-wrap: balance;

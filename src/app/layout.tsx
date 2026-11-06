@@ -30,8 +30,8 @@ export default function RootLayout({
         <main className="flex-1">
           {children}
         </main>
-        <footer className="border-t border-white/10 bg-solana-navy/80 py-6 px-4">
-          <div className="max-w-7xl mx-auto text-center text-sm text-white/50">
+        <footer className="site-footer border-t py-6 px-4">
+          <div className="site-footer__content max-w-7xl mx-auto text-center text-sm text-white/60">
             <p>Automated Solana wallet security assessment. Not a guarantee of safety.</p>
             <p className="mt-1">No automated scanner can guarantee that a wallet is safe.</p>
           </div>
