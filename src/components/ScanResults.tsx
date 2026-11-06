@@ -118,7 +118,7 @@ export function ScanResults({ address }: ScanResultsProps) {
         </div>
         <h1 className="text-2xl font-bold text-white mb-4">Scan Failed</h1>
         <p className="text-risk-critical mb-6">{error || "Unknown error"}</p>
-        <Link href="/" className="text-solana-blue hover:underline">Try another scan</Link>
+        <Link href="/scanner" className="text-solana-blue hover:underline">Try another scan</Link>
       </div>
     );
   }
@@ -163,7 +163,7 @@ export function ScanResults({ address }: ScanResultsProps) {
               View on Solscan
             </a>
             <Link
-              href="/"
+              href="/scanner"
               className="inline-flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

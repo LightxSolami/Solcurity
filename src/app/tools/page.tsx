@@ -103,7 +103,7 @@ export default function ToolsPage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {[
-              { label: "Scan Wallet", href: "/", icon: <SearchIcon /> },
+              { label: "Scan Wallet", href: "/scanner", icon: <SearchIcon /> },
               { label: "Bubble Map", href: "/bubble-map", icon: <ChartIcon /> },
               { label: "Security Guide", href: "/security", icon: <ShieldIcon /> },
               { label: "How It Works", href: "/how-it-works", icon: <BookIcon /> },

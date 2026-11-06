@@ -29,12 +29,17 @@ body {
 
 .site-footer::before {
   position: absolute;
-  z-index: -1;
-  inset: -100%;
+  z-index: 0;
+  inset: 0;
   background:
-    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.17), transparent 35%),
-    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.22), transparent 38%),
-    radial-gradient(ellipse at 50% 100%, rgba(20, 100, 180, 0.15), transparent 40%);
+    radial-gradient(circle at 10% 40%, rgba(20, 241, 149, 0.8) 0 2px, rgba(20, 241, 149, 0.2) 3px, transparent 12px),
+    radial-gradient(circle at 28% 75%, rgba(56, 213, 255, 0.75) 0 2px, rgba(56, 213, 255, 0.18) 3px, transparent 12px),
+    radial-gradient(circle at 48% 24%, rgba(255, 61, 242, 0.72) 0 2px, rgba(255, 61, 242, 0.18) 3px, transparent 12px),
+    radial-gradient(circle at 69% 65%, rgba(153, 69, 255, 0.8) 0 2px, rgba(153, 69, 255, 0.22) 3px, transparent 14px),
+    radial-gradient(circle at 88% 35%, rgba(255, 210, 61, 0.72) 0 2px, rgba(255, 210, 61, 0.18) 3px, transparent 12px),
+    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.12), transparent 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.16), transparent 38%),
+    radial-gradient(ellipse at 50% 100%, rgba(20, 100, 180, 0.12), transparent 40%);
   content: "";
   animation: solsnake-footer-drift 18s ease-in-out infinite alternate;
   pointer-events: none;
