@@ -45,6 +45,14 @@ prototype.
 
 ## Free online server
 
+The Node/WebSocket server can be deployed as a free Render web service from
+the repository's `render.yaml` Blueprint. After Render deploys it, set
+`NEXT_PUBLIC_SOLSNAKE_SERVER_URL` in the Vercel project's Production
+environment to the service's `https://*.onrender.com` URL and redeploy Vercel.
+The Snake Arena page then embeds the online server; without that setting it
+continues to show the practice game. Render's free service may sleep when idle,
+so the first connection after inactivity can take a little time.
+
 ```bash
 cd server
 npm install

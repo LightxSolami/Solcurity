@@ -2,15 +2,18 @@ import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Snake Arena | Solcurity",
-  description: "Play the free SolSnake practice arena against four bots.",
+  description: "Play SolSnake practice or free online multiplayer.",
 };
 
 export default function SnakeGamePage() {
+  const gameUrl = process.env.NEXT_PUBLIC_SOLSNAKE_SERVER_URL?.trim();
+  const src = gameUrl ? new URL("/", gameUrl).toString() : "/solsnake/index.html";
+
   return (
     <iframe
-      src="/solsnake/index.html"
-      title="SolSnake practice arena"
-      className="block w-full border-0"
+      src={src}
+      title={gameUrl ? "SolSnake online multiplayer arena" : "SolSnake practice arena"}
+      className="snake-arena-frame block w-full border-0"
       style={{ height: "min(820px, max(600px, calc(100dvh - 150px)))" }}
     />
   );

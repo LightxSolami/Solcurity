@@ -19,7 +19,7 @@ body {
   min-height: 100vh;
 }
 
-main:has(> iframe[src="/solsnake/index.html"]) {
+main:has(> iframe.snake-arena-frame) {
   background-color: #05030c;
 }
 

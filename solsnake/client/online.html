@@ -28,7 +28,7 @@ button.go{background:linear-gradient(90deg,var(--sol),var(--vio));color:#05030c;
  <h1>SOLSNAKE ONLINE</h1>
  <p class="note">Up to 5 real players per match. Empty seats are filled with bots after 8 seconds. Free rooms only: paid rooms are locked.</p>
  <div class="panel"><input id="nm" maxlength="12" placeholder="Your name" value="Player" aria-label="Name"><button class="go" id="play">Find match</button></div>
- <div class="panel" id="tiers"><button data-t="free" class="sel">Free</button><button data-t="0.05">0.05 SOL</button><button data-t="0.1">0.1 SOL</button><button data-t="0.5">0.5 SOL</button><button data-t="1">1 SOL</button></div>
+ <div class="panel" id="tiers"><button data-t="free" class="sel">Free</button><button data-t="0.05" disabled>0.05 SOL (Locked)</button><button data-t="0.1" disabled>0.1 SOL (Locked)</button><button data-t="0.5" disabled>0.5 SOL (Locked)</button><button data-t="1" disabled>1 SOL (Locked)</button></div>
  <div class="panel"><button id="wal">Connect wallet</button><button id="rfd" class="hide">Reclaim stake</button></div>
  <p class="note" id="msg">Aim with mouse or finger. Hold click, Space or BOOST to sprint.</p>
  <div class="panel"><button id="mm">Music on</button><button id="ss">SFX on</button></div>
@@ -110,7 +110,7 @@ try{if(localStorage.getItem('ss_pending'))$('rfd').classList.remove('hide')}catc
 $('wal').onclick=async()=>{try{if(wallet){await prov.disconnect();wallet=null;$('wal').textContent='Connect wallet';return}
  prov=getProv();if(!prov){$('msg').textContent='No Solana wallet found. Install Phantom, Solflare or Backpack.';return}
  const r=await prov.connect();wallet=(r&&r.publicKey?r.publicKey:prov.publicKey);const k=wallet.toString();$('wal').textContent=k.slice(0,4)+'…'+k.slice(-4)+' · Disconnect'}catch(e){$('msg').textContent='Wallet connection declined.'}};
-document.querySelectorAll('#tiers button').forEach(b=>b.onclick=()=>{tier=b.dataset.t;document.querySelectorAll('#tiers button').forEach(x=>x.classList.toggle('sel',x===b))});
+document.querySelectorAll('#tiers button:not(:disabled)').forEach(b=>b.onclick=()=>{tier=b.dataset.t;document.querySelectorAll('#tiers button').forEach(x=>x.classList.toggle('sel',x===b))});
 function onSnap(m){const me=m.sn[m.me];if(me.l>prevL)sfx('eat',Math.min(8,me.l-prevL));if(me.k>prevK)sfx('kill');prevL=me.l;prevK=me.k;
  const al=m.sn.filter(s=>s.al).length;inten+=((.3+(me.b?.25:0)+(5-al)/4*.4)-inten)*.1;
  if(prevAl&&!me.al){sfx('die');deadAt=performance.now();setBoostSnd(0)}prevAl=me.al;

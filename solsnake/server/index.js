@@ -132,7 +132,7 @@ wss.on('connection', ws => {
 });
 async function start() {
   if (PAID) await chain.assertDevnet(C);
-  srv.listen(PORT, () => console.log(`SOLSNAKE server on http://localhost:${PORT} (paid rooms ${PAID ? 'DEVNET ONLY' : 'locked'})`));
+  srv.listen(PORT, '0.0.0.0', () => console.log(`SOLSNAKE server on port ${PORT} (paid rooms ${PAID ? 'DEVNET ONLY' : 'locked'})`));
 }
 
 start().catch(e => {
