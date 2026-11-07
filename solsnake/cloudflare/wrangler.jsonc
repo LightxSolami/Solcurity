@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "solsnake-online",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-07",
+  "assets": {
+    "directory": "../client",
+    "binding": "ASSETS",
+    "run_worker_first": ["/", "/ws*"]
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "GAME_LOBBY",
+        "class_name": "GameLobby"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["GameLobby"]
+    }
+  ],
+  "vars": {
+    "PAID_ENABLED": "false"
+  }
+}

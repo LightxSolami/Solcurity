@@ -45,15 +45,20 @@ prototype.
 
 ## Free online server
 
-The Node/WebSocket server can be deployed as a free Render web service from
-the repository's `render.yaml` Blueprint. The service builds from the
-repository root because its package manifest references the root package.
-After Render deploys it, set
+The free multiplayer Worker serves the online client and WebSocket endpoint
+from one Cloudflare hostname. From `solsnake/cloudflare`, run `npm ci`,
+`npx wrangler login`, then `npm run deploy`. Wrangler creates the SQLite-backed
+Durable Object on first deployment. No RPC key or wallet secret is needed.
+Once deployed, set
 `NEXT_PUBLIC_SOLSNAKE_SERVER_URL` in the Vercel project's Production
-environment to the service's `https://*.onrender.com` URL and redeploy Vercel.
+environment to the Worker URL and redeploy Vercel.
 The Snake Arena page then embeds the online server; without that setting it
-continues to show the practice game. Render's free service may sleep when idle,
-so the first connection after inactivity can take a little time.
+continues to show the practice game. Cloudflare's free plan has daily Durable
+Object request and compute limits; the shared lobby can queue concurrent
+players, but usage may be throttled if the account exceeds those limits.
+
+For a local end-to-end check, run `npm run dev` in one terminal and
+`npm run test:local` in another from `solsnake/cloudflare`.
 
 ```bash
 cd server

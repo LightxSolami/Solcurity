@@ -77,7 +77,7 @@ const PAL=[['#14f195','#9945ff'],['#ff5a5a','#ffb347'],['#38d5ff','#3d7bff'],['#
 const gc={};function glow(c){return gc[c]||(gc[c]=(()=>{const o=document.createElement('canvas');o.width=o.height=64;const g=o.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);r.addColorStop(0,c);r.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return o})())}
 const rgb=c=>[1,3,5].map(i=>parseInt(c.substr(i,2),16));function mix(a,b,t){const p=rgb(a),q=rgb(b);return`rgb(${p[0]+(q[0]-p[0])*t|0},${p[1]+(q[1]-p[1])*t|0},${p[2]+(q[2]-p[2])*t|0})`}
 let tier='free',wallet=null,prov=null,cfg={},curDep=null,pendingSettlement=null;let ws,snaps=[],state='menu',prevL=14,prevK=0,prevAl=1,deadAt=0,cx=0,cy=0,zoom=.7,aim=0,boost=0,keyT=0,hudT=0,over=false;
-function connect(){aud();if(tier!=='free'&&!wallet){$('msg').textContent='Connect a wallet first.';return}$('msg').textContent='Connecting…';const p=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(p+'://'+location.host);
+function connect(){aud();if(tier!=='free'&&!wallet){$('msg').textContent='Connect a wallet first.';return}$('msg').textContent='Connecting…';const p=location.protocol==='https:'?'wss':'ws';ws=new WebSocket(p+'://'+location.host+'/ws');
  ws.onopen=()=>ws.send(JSON.stringify({t:'join',name:$('nm').value||'Player',tier,wallet:wallet&&wallet.toString()}));
  ws.onerror=()=>$('msg').textContent='Cannot reach the server. Is it running?';
  ws.onclose=()=>{if(state==='play'&&!over)showOver('Disconnected',[])};
@@ -119,7 +119,7 @@ function showOver(t,d,keepConnection=false){over=true;$('ot').textContent=t;$('o
 function cur(){if(!snaps.length)return null;const rt=performance.now()-100;let a=snaps[0],b=snaps[snaps.length-1];for(let i=snaps.length-1;i>0;i--)if(snaps[i-1].ts<=rt){a=snaps[i-1];b=snaps[i];break}
  const al=b.ts>a.ts?Math.max(0,Math.min(1,(rt-a.ts)/(b.ts-a.ts))):1;
  const sn=b.sn.map((s,i)=>{const o=a.sn[i],g=[];for(let j=0;j<s.g.length;j++)g.push(o&&j<o.g.length?o.g[j]+(s.g[j]-o.g[j])*al:s.g[j]);return{...s,g}});return{me:b.me,sn,f:b.f}}
-setInterval(()=>{if(ws&&ws.readyState===1&&state==='play'&&!over){if(keyT){const s=snaps.length&&snaps[snaps.length-1].sn[snaps[snaps.length-1].me];if(s)aim=s.a+keyT*1.1}ws.send(JSON.stringify({t:'in',a:aim,b:boost}))}},33);
+setInterval(()=>{if(ws&&ws.readyState===1&&state==='play'&&!over){if(keyT){const s=snaps.length&&snaps[snaps.length-1].sn[snaps[snaps.length-1].me];if(s)aim=s.a+keyT*1.1}ws.send(JSON.stringify({t:'in',a:aim,b:boost}))}},100);
 function draw(dt){tt+=dt;x.setTransform(dpr,0,0,dpr,0,0);x.fillStyle='#05030c';x.fillRect(0,0,W,H);const c=cur();
  if(c){const m=c.sn[c.me];if(m.g.length){const k=1-Math.exp(-dt*9);cx+=(m.g[0]-cx)*k;cy+=(m.g[1]-cy)*k}zoom+=((Math.min(W,H)/620/(1+Math.min(m.l,300)*.0016))-zoom)*(1-Math.exp(-dt*3))}else{cx=Math.cos(tt*.1)*400;cy=Math.sin(tt*.1)*400;zoom=.7}
  x.save();x.translate(W/2,H/2);x.scale(zoom,zoom);x.translate(-cx,-cy);
