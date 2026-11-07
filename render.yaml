@@ -3,9 +3,8 @@ services:
     name: solsnake-online
     runtime: node
     plan: free
-    rootDir: solsnake/server
-    buildCommand: npm ci
-    startCommand: npm start
+    buildCommand: npm ci --prefix solsnake/server
+    startCommand: npm start --prefix solsnake/server
     healthCheckPath: /
     envVars:
       - key: PAID_ENABLED
