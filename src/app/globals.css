@@ -19,6 +19,10 @@ body {
   min-height: 100vh;
 }
 
+main:has(> iframe[src="/solsnake/index.html"]) {
+  background-color: #05030c;
+}
+
 .site-footer {
   position: relative;
   isolation: isolate;
