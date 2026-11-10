@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://solcurity.app"),
   title: "Free Solana Wallet Security Scanner | Solcurity",
   description:
-    "Scan a Solana wallet address for suspicious transactions, risky tokens, malicious addresses, and other security indicators. Free automated security analysis.",
+    "Monitor public Solana wallet activity with a live transaction feed, balance changes, and security tools.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -16,8 +16,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Solcurity",
     title: "Solcurity",
-    description:
-      "Free Solana wallet security scanner and Snake Arena practice game.",
+    description: "Live Solana wallet activity monitoring and security tools.",
     images: [
       {
         url: "/icons/solcurity-social.png",
@@ -30,8 +29,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Solcurity",
-    description:
-      "Free Solana wallet security scanner and Snake Arena practice game.",
+    description: "Live Solana wallet activity monitoring and security tools.",
     images: ["/icons/solcurity-social.png"],
   },
   keywords: [

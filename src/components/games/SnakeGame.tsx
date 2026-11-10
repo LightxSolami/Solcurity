@@ -237,12 +237,12 @@ export function SnakeGame({
     canvas.height = cellSizePx * size;
 
     // Clear
-    ctx.fillStyle = "#0a0a23";
+    ctx.fillStyle = "#050515";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw grid background
-    ctx.strokeStyle = "#1a1a3e";
-    ctx.lineWidth = 0.5;
+    // Draw grid background - more visible
+    ctx.strokeStyle = "#1e2a5e";
+    ctx.lineWidth = 1;
     for (let i = 0; i <= size; i++) {
       ctx.beginPath();
       ctx.moveTo(i * cellSizePx, 0);
@@ -253,6 +253,18 @@ export function SnakeGame({
       ctx.lineTo(canvas.width, i * cellSizePx);
       ctx.stroke();
     }
+
+    // Subtle center lines
+    ctx.strokeStyle = "#2a3a6e";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(size * cellSizePx / 2, 0);
+    ctx.lineTo(size * cellSizePx / 2, canvas.height);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, size * cellSizePx / 2);
+    ctx.lineTo(canvas.width, size * cellSizePx / 2);
+    ctx.stroke();
 
     // Draw food
     ctx.fillStyle = "#ef4444";
@@ -330,21 +342,28 @@ export function SnakeGame({
       ctx.fillStyle = "#9945FF";
       ctx.fillText("Press ENTER to restart", canvas.width / 2, canvas.height / 2 + 40);
     } else if (!gameState.gameStarted) {
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      // Semi-transparent overlay so game grid is visible
+      ctx.fillStyle = "rgba(5, 5, 21, 0.75)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       ctx.fillStyle = "#ffffff";
       ctx.font = "bold 28px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("SNAKE ARENA", canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillText("SNAKE ARENA", canvas.width / 2, canvas.height / 2 - 40);
 
-      ctx.font = "18px system-ui, sans-serif";
-      ctx.fillStyle = "#9945FF";
-      ctx.fillText("Press ENTER or SPACE to start", canvas.width / 2, canvas.height / 2 + 20);
+      // Pulsing "Press ENTER" text
+      const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+      ctx.fillStyle = `rgba(153, 69, 255, ${pulse})`;
+      ctx.font = "bold 20px system-ui, sans-serif";
+      ctx.fillText("Press ENTER or SPACE to Start", canvas.width / 2, canvas.height / 2);
 
-      ctx.fillStyle = "#8b5cf6";
       ctx.font = "14px system-ui, sans-serif";
-      ctx.fillText("Use ARROW KEYS or WASD to move", canvas.width / 2, canvas.height / 2 + 50);
+      ctx.fillStyle = "#8b5cf6";
+      ctx.fillText("Arrow Keys or WASD to Move", canvas.width / 2, canvas.height / 2 + 40);
+
+      ctx.fillStyle = "#64748b";
+      ctx.font = "12px system-ui, sans-serif";
+      ctx.fillText("Collect food • Avoid walls & yourself • Survive!", canvas.width / 2, canvas.height / 2 + 70);
     }
   }, [gameState, boardSize, cellSize]);
 

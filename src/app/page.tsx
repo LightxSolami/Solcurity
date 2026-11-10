@@ -1,17 +1,12 @@
 import type { Metadata } from "next";
+import { WalletTracker } from "@/components/WalletTracker";
 
 export const metadata: Metadata = {
-  title: "SolSnake Arena | Solcurity",
-  description: "Play the free SolSnake practice arena against four bots.",
+  title: "Live Wallet Activity Tracker | Solcurity",
+  description:
+    "Monitor public Solana wallet activity with a live transaction feed, balance changes, and explorer links.",
 };
 
 export default function HomePage() {
-  return (
-    <iframe
-      src="/solsnake/index.html"
-      title="SolSnake practice arena"
-      className="block w-full border-0"
-      style={{ height: "min(820px, max(600px, calc(100dvh - 150px)))" }}
-    />
-  );
+  return <WalletTracker />;
 }

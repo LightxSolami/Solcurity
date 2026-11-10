@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useWallet } from "@/hooks/useWallet";
 
 const navItems = [
-  { href: "/", label: "Snake Arena" },
+  { href: "/", label: "Wallet Tracker" },
   { href: "/scanner", label: "Scanner" },
   { href: "/svm", label: "SVM Explorer" },
   { href: "/tools", label: "Tools" },
