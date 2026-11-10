@@ -1,13 +1,12 @@
-import { Metadata } from "next";
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import { PumpFunAnalytics } from "@/components/pumpfuntool/PumpFunAnalytics";
 
-export const metadata: Metadata = {
-  title: "PumpFun Analytics | Solcurity Tools",
-  description: "Analyze PumpFun tokens with bonding curve tracking, holder analysis, trade history, and risk indicators",
-};
-
 export default function PumpFunAnalyticsPage() {
+  const [mint, setMint] = useState("FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump");
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
       <div className="mb-10">
@@ -21,7 +20,28 @@ export default function PumpFunAnalyticsPage() {
         <p className="text-white/60 max-w-2xl">Deep analytics for PumpFun tokens - bonding curve progress, holder distribution, trade history, and risk indicators for holders and traders.</p>
       </div>
 
-      <PumpFunAnalytics mint="FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump" />
+      <div className="mb-8 bg-solana-card border border-white/10 rounded-2xl p-6">
+        <label className="block text-white/60 text-sm mb-3">Enter PumpFun Token Mint Address</label>
+        <div className="flex gap-3">
+          <input
+            type="text"
+            value={mint}
+            onChange={(e) => setMint(e.target.value)}
+            placeholder="e.g., FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump"
+            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-solana-purple text-base font-mono"
+            maxLength={44}
+          />
+          <button
+            onClick={() => setMint("FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump")}
+            className="px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm"
+          >
+            Default Token
+          </button>
+        </div>
+        <p className="text-white/50 text-xs mt-2">Paste any PumpFun token mint address (44 characters, base58)</p>
+      </div>
+
+      <PumpFunAnalytics mint={mint} />
     </div>
   );
 }
