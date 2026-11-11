@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { FuturisticWalletTracker } from "@/components/FuturisticWalletTracker";
-import { PumpFunAnalytics } from "@/components/pumpfuntool/PumpFunAnalytics";
 
 export const metadata: Metadata = {
   title: "Solcurity - Solana Wallet Intelligence & Security",
@@ -34,9 +33,6 @@ export default function HomePage() {
           </p>
           
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <a href="/tools/pumpfuntool" className="px-8 py-4 rounded-xl bg-gradient-to-r from-solana-purple to-solana-blue text-white font-semibold hover:brightness-110 transition-all text-lg">
-              PumpFun Analytics
-            </a>
             <a href="#fly-map" className="px-8 py-4 rounded-xl border border-white/10 bg-white/5 text-white font-semibold hover:bg-white/10 transition-all text-lg">
               Fly Map Tracker
             </a>
@@ -54,20 +50,6 @@ export default function HomePage() {
 
       {/* Main Content */}
       <main>
-        {/* PumpFun Analytics Section */}
-        <section id="pumpfuntool" className="py-20 px-4 bg-gradient-to-b from-transparent via-[#0a0f2a]/50 to-transparent">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-10 text-center">
-              <h2 className="text-3xl md:text-4xl font-bold mb-3">PumpFun Analytics</h2>
-              <p className="text-white/60 max-w-2xl mx-auto">Deep analytics for PumpFun tokens - bonding curve progress, holder analysis, trade history, and risk indicators</p>
-            </div>
-            
-            <div className="bg-[#050515]/50 border border-white/10 rounded-2xl p-6">
-              <PumpFunAnalytics mint="FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump" />
-            </div>
-          </div>
-        </section>
-
         {/* Fly Map Tracker Section */}
         <section id="fly-map" className="py-20 px-4">
           <div className="max-w-7xl mx-auto">
