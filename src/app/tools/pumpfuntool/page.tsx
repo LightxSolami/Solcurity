@@ -5,7 +5,8 @@ import Link from "next/link";
 import { PumpFunAnalytics } from "@/components/pumpfuntool/PumpFunAnalytics";
 
 export default function PumpFunAnalyticsPage() {
-  const [mint, setMint] = useState("FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump");
+  const [mint, setMint] = useState("");
+  const [analyzedMint, setAnalyzedMint] = useState("");
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-12">
@@ -22,26 +23,40 @@ export default function PumpFunAnalyticsPage() {
 
       <div className="mb-8 bg-solana-card border border-white/10 rounded-2xl p-6">
         <label className="block text-white/60 text-sm mb-3">Enter PumpFun Token Mint Address</label>
-        <div className="flex gap-3">
+        <form
+          className="flex flex-col sm:flex-row gap-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setAnalyzedMint(mint.trim());
+          }}
+        >
           <input
             type="text"
             value={mint}
             onChange={(e) => setMint(e.target.value)}
-            placeholder="e.g., FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump"
+            placeholder="Paste a PumpFun token mint address"
             className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-solana-purple text-base font-mono"
             maxLength={44}
+            aria-label="PumpFun token mint address"
           />
           <button
-            onClick={() => setMint("FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump")}
-            className="px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm"
+            type="submit"
+            disabled={!mint.trim()}
+            className="px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Default Token
+            Analyze Token
           </button>
-        </div>
-        <p className="text-white/50 text-xs mt-2">Paste any PumpFun token mint address (44 characters, base58)</p>
+        </form>
+        <p className="text-white/50 text-xs mt-2">Paste a token mint address, then select Analyze Token.</p>
       </div>
 
-      <PumpFunAnalytics mint={mint} />
+      {analyzedMint ? (
+        <PumpFunAnalytics key={analyzedMint} mint={analyzedMint} />
+      ) : (
+        <div className="bg-solana-card border border-white/10 rounded-2xl p-8 text-center text-white/50">
+          Enter a PumpFun token mint address to view its analytics.
+        </div>
+      )}
     </div>
   );
 }

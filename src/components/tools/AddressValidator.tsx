@@ -129,7 +129,7 @@ export function AddressValidator() {
             <ul className="space-y-1 text-white/60">
               <li>• System Program: <code className="bg-white/10 px-1 rounded">11111111111111111111111111111111</code></li>
               <li>• SPL Token: <code className="bg-white/10 px-1 rounded">TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA</code></li>
-              <li>• Token-2022: <code className="bg-white/10 px-1 rounded">TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ</code></li>
+              <li>• Token-2022: <code className="bg-white/10 px-1 rounded">TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb</code></li>
               <li>• Wrapped SOL: <code className="bg-white/10 px-1 rounded">So11111111111111111111111111111111111111112</code></li>
             </ul>
           </div>

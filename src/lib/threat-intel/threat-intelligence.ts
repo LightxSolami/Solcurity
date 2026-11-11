@@ -37,8 +37,8 @@ export const THREAT_INTEL_SOURCES: ThreatIntelSource[] = [
 /** Verified, documented program IDs (Solana core + SPL). */
 const KNOWN_PROGRAMS: Record<string, { name: string; trust: "trusted" }> = {
   "11111111111111111111111111111111": { name: "System Program", trust: "trusted" },
-  "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ": { name: "Token Program (SPL)", trust: "trusted" },
-  "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ-2": { name: "Token-2022 Program", trust: "trusted" },
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": { name: "Token Program (SPL)", trust: "trusted" },
+  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb": { name: "Token-2022 Program", trust: "trusted" },
   "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin": { name: "Serum DEX v3", trust: "trusted" },
   "srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX": { name: "Serum DEX", trust: "trusted" },
   "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4": { name: "Jupiter Aggregator v6", trust: "trusted" },

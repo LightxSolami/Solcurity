@@ -148,7 +148,7 @@ export async function getToken2022Accounts(
   pubkey: PublicKey
 ): Promise<ReturnType<Connection["getTokenAccountsByOwner"]>> {
   return connection.getTokenAccountsByOwner(pubkey, {
-    programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+    programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
   });
 }
 
@@ -157,7 +157,7 @@ export async function getParsedTokenAccounts(
   pubkey: PublicKey
 ): Promise<ReturnType<Connection["getParsedTokenAccountsByOwner"]>> {
   return connection.getParsedTokenAccountsByOwner(pubkey, {
-    programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+    programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
   });
 }
 

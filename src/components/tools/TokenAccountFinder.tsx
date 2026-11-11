@@ -19,7 +19,8 @@ export function TokenAccountFinder() {
   const [loading, setLoading] = useState(false);
   const [accounts, setAccounts] = useState<TokenAccount[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [stats, setStats] = useState({ spl: 0, t2022: 0, totalValue: 0 });
+  const [filter, setFilter] = useState("");
+  const [stats, setStats] = useState({ spl: 0, t2022: 0, total: 0 });
 
   const findAccounts = async () => {
     if (!address.trim()) return;
@@ -37,13 +38,13 @@ export function TokenAccountFinder() {
           programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
         }),
         connection.getParsedTokenAccountsByOwner(pubkey, {
-          programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+          programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
         }),
       ]);
 
       const allAccounts: TokenAccount[] = [];
 
-      const processAccounts = (response: any, is2022: boolean) => {
+      const processAccounts = (response: typeof splResponse, is2022: boolean) => {
         for (const account of response.value) {
           const parsed = account.account.data.parsed?.info;
           if (!parsed) continue;
@@ -56,7 +57,7 @@ export function TokenAccountFinder() {
 
           allAccounts.push({
             mint,
-            programId: is2022 ? "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ" : "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+            programId: is2022 ? "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb" : "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
             owner: parsed.owner,
             amount: tokenAmount?.amount?.toString() || "0",
             decimals: tokenAmount?.decimals || 0,
@@ -73,7 +74,7 @@ export function TokenAccountFinder() {
       setStats({
         spl: allAccounts.filter(a => !a.isToken2022).length,
         t2022: allAccounts.filter(a => a.isToken2022).length,
-        totalValue: allAccounts.reduce((sum, a) => sum + a.uiAmount, 0),
+        total: allAccounts.length,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch token accounts");
@@ -89,6 +90,10 @@ export function TokenAccountFinder() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
   };
+
+  const filteredAccounts = accounts.filter((account) =>
+    account.mint.toLowerCase().includes(filter.trim().toLowerCase())
+  );
 
   return (
     <div className="space-y-6">
@@ -139,7 +144,7 @@ export function TokenAccountFinder() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard label="SPL Tokens" value={stats.spl} color="#3b82f6" icon={<TokenIcon />} />
           <StatCard label="Token-2022" value={stats.t2022} color="#14F195" icon={<Token2022Icon />} />
-          <StatCard label="Total Tokens" value={stats.totalValue.toLocaleString()} color="#9945FF" icon={<TotalIcon />} />
+          <StatCard label="Total Accounts" value={stats.total} color="#9945FF" icon={<TotalIcon />} />
         </div>
       )}
 
@@ -151,9 +156,11 @@ export function TokenAccountFinder() {
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Filter by mint, symbol..."
+                value={filter}
+                onChange={(event) => setFilter(event.target.value)}
+                placeholder="Filter by mint address..."
                 className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-solana-purple text-sm w-64"
-                id="filter-input"
+                aria-label="Filter token accounts by mint address"
               />
             </div>
           </div>
@@ -170,7 +177,7 @@ export function TokenAccountFinder() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10" id="accounts-tbody">
-                {accounts.map((account, i) => (
+                {filteredAccounts.map((account, i) => (
                   <tr key={i} className="hover:bg-white/5 transition-colors filter-row">
                     <td className="py-3 pr-4 pl-4">
                       <code className="text-white/70 font-mono text-sm">{account.mint.slice(0, 8)}...{account.mint.slice(-6)}</code>
@@ -209,7 +216,7 @@ export function TokenAccountFinder() {
           </div>
           
           <div className="p-4 border-t border-white/10 text-white/50 text-sm">
-            Showing {accounts.length} token accounts with non-zero balance. Zero-balance accounts are hidden.
+            Showing {filteredAccounts.length} of {accounts.length} token accounts with non-zero balance. Zero-balance accounts are hidden.
           </div>
         </div>
       )}

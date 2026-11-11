@@ -188,7 +188,7 @@ describe("Risk Engine", () => {
 function createFinding(severity: Severity, confidence: SecurityFinding["confidence"]): SecurityFinding {
   return buildFinding(
     severity,
-    "test",
+    "general",
     "Test",
     "Test",
     "Test",

@@ -3,11 +3,10 @@
 import { useState } from "react";
 
 const RPC_ENDPOINTS = [
-  { name: "Solana Mainnet", url: "https://api.mainnet-beta.solana.com", free: true },
-  { name: "Alchemy", url: "https://solana-mainnet.g.alchemy.com/v2/demo", free: true },
-  { name: "Ankr", url: "https://rpc.ankr.com/solana", free: true },
-  { name: "DRPC", url: "https://solana.drpc.org", free: true },
-  { name: "Local Validator", url: "http://127.0.0.1:8899", free: false },
+  { name: "Solana Mainnet", url: "https://api.mainnet-beta.solana.com" },
+  { name: "Alchemy", url: "https://solana-mainnet.g.alchemy.com/v2/demo" },
+  { name: "Ankr", url: "https://rpc.ankr.com/solana" },
+  { name: "DRPC", url: "https://solana.drpc.org" },
 ];
 
 interface RpcTestResult {
@@ -91,8 +90,8 @@ export default function RpcTesterPage() {
   }
 
   async function testCustom() {
-    if (!customUrl) return;
-    await testEndpoint(customUrl);
+    if (!customUrl.trim()) return;
+    await testEndpoint(customUrl.trim());
   }
 
   return (

@@ -2,6 +2,28 @@
 
 import { useState } from "react";
 
+export function solToLamports(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+
+  const match = /^(?:(\d+)(?:\.(\d{0,9}))?|\.(\d{1,9}))$/.exec(trimmed);
+  if (!match) return "";
+
+  const fraction = match[2] ?? match[3] ?? "";
+  return `${match[1] || "0"}${fraction.padEnd(9, "0")}`.replace(/^0+(?=\d)/, "");
+}
+
+export function lamportsToSol(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (!/^\d+$/.test(trimmed)) return "";
+
+  const normalized = trimmed.replace(/^0+(?=\d)/, "");
+  const whole = normalized.length > 9 ? normalized.slice(0, -9) : "0";
+  const fraction = normalized.slice(-9).padStart(9, "0").replace(/0+$/, "");
+  return fraction ? `${whole}.${fraction}` : whole;
+}
+
 export function LamportsConverter() {
   const [sol, setSol] = useState("");
   const [lamports, setLamports] = useState("");
@@ -10,19 +32,13 @@ export function LamportsConverter() {
   const handleSolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSol(value);
-    if (activeField === "sol") {
-      const lamportsValue = parseFloat(value) * 1_000_000_000;
-      setLamports(Number.isInteger(lamportsValue) ? lamportsValue.toString() : lamportsValue.toFixed(0));
-    }
+    setLamports(solToLamports(value));
   };
 
   const handleLamportsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setLamports(value);
-    if (activeField === "lamports") {
-      const solValue = parseInt(value, 10) / 1_000_000_000;
-      setSol(solValue.toString());
-    }
+    setSol(lamportsToSol(value));
   };
 
   const handleFocus = (field: "sol" | "lamports") => {
@@ -80,18 +96,13 @@ export function LamportsConverter() {
 
         {/* Swap Button */}
         <button
-          onClick={() => {
-            const temp = sol;
-            setSol(lamports);
-            setLamports(temp);
-            setActiveField(activeField === "sol" ? "lamports" : "sol");
-          }}
+          onClick={() => setActiveField(activeField === "sol" ? "lamports" : "sol")}
           className="mt-4 w-full py-3 bg-white/5 border border-white/10 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18m-4 4l4-4m0 0l4 4m-4-4h-18" />
           </svg>
-          Swap Fields
+          Switch Active Input
         </button>
       </div>
 
@@ -104,7 +115,7 @@ export function LamportsConverter() {
               key={amount}
               onClick={() => {
                 setSol(amount.toString());
-                setLamports((amount * 1_000_000_000).toString());
+                setLamports(solToLamports(amount.toString()));
                 setActiveField("sol");
               }}
               className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg text-white/70 hover:text-white hover:bg-white/10 hover:border-solana-purple/30 transition-all text-sm font-mono"
@@ -113,6 +124,7 @@ export function LamportsConverter() {
             </button>
           ))}
         </div>
+        <p className="text-white/40 text-xs mt-3">SOL values support up to 9 decimal places.</p>
       </div>
 
       {/* Reference Table */}

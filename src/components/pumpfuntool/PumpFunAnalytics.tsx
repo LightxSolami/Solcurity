@@ -22,9 +22,9 @@ interface PumpFunAnalyticsData {
   };
   price: {
     sol: number;
-    usd: number;
+    usd: number | null;
     marketCap: number;
-    marketCapUsd: number;
+    marketCapUsd: number | null;
   };
   bondingCurve: {
     progress: number;
@@ -32,9 +32,9 @@ interface PumpFunAnalyticsData {
     tokensRemaining: number;
   };
   holders: {
-    total: number;
+    topAccountCount: number;
     top10Percentage: number;
-    top50Percentage: number;
+    top20Percentage: number;
     holders: Array<{ address: string; balance: number; percentage: number }>;
   };
   liquidity: {
@@ -73,8 +73,8 @@ function formatSol(num: number): string {
   return num.toFixed(4) + " SOL";
 }
 
-function formatUsd(num: number): string {
-  return "$" + formatNumber(num, 2);
+function formatUsd(num: number | null): string {
+  return num === null ? "N/A" : "$" + formatNumber(num, 2);
 }
 
 function formatPercentage(num: number): string {
@@ -242,16 +242,16 @@ function HoldersTab({ holders }: { holders: any }) {
     <div className="space-y-4">
       <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-white/5 rounded-xl p-4 text-center">
-          <p className="text-white/60 text-xs uppercase tracking-wider">Total Holders</p>
-          <p className="text-white font-bold text-2xl">{holders.total}</p>
+          <p className="text-white/60 text-xs uppercase tracking-wider">Top Accounts</p>
+          <p className="text-white font-bold text-2xl">{holders.topAccountCount}</p>
         </div>
         <div className="bg-white/5 rounded-xl p-4 text-center">
           <p className="text-white/60 text-xs uppercase tracking-wider">Top 10 %</p>
           <p className="text-white font-bold text-2xl text-solana-yellow">{holders.top10Percentage.toFixed(1)}%</p>
         </div>
         <div className="bg-white/5 rounded-xl p-4 text-center">
-          <p className="text-white/60 text-xs uppercase tracking-wider">Top 50 %</p>
-          <p className="text-white font-bold text-2xl text-solana-blue">{holders.top50Percentage.toFixed(1)}%</p>
+          <p className="text-white/60 text-xs uppercase tracking-wider">Top 20 Accounts</p>
+          <p className="text-white font-bold text-2xl text-solana-blue">{holders.top20Percentage.toFixed(1)}%</p>
         </div>
       </div>
 
@@ -266,7 +266,7 @@ function HoldersTab({ holders }: { holders: any }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-white/10">
-            {holders.holders.slice(0, 50).map((holder: any, i: number) => (
+            {holders.holders.slice(0, 20).map((holder: any, i: number) => (
               <tr key={holder.address} className="hover:bg-white/5 transition-colors">
                 <td className="py-3 pl-4 text-white/50 text-sm font-mono">#{i + 1}</td>
                 <td className="py-3 pl-4">
@@ -511,8 +511,8 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
               <HoldersIcon />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white/60 text-xs uppercase tracking-wider">Holders</p>
-              <p className="text-white font-bold text-lg truncate">{holders.total.toString()}</p>
+              <p className="text-white/60 text-xs uppercase tracking-wider">Largest Holders</p>
+              <p className="text-white font-bold text-lg truncate">{holders.topAccountCount.toString()}</p>
               <p className="text-white/50 text-xs">Top 10: {holders.top10Percentage.toFixed(1)}%</p>
             </div>
           </div>

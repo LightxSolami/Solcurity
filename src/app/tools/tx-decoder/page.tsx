@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { decodeTransactionData } from "@/lib/transaction-decoder";
 
 const INSTRUCTIONS = [
   { name: "Transfer", id: "2", description: "Simple SOL transfer" },
@@ -14,43 +15,16 @@ const INSTRUCTIONS = [
 
 export default function TxDecoderPage() {
   const [txData, setTxData] = useState("");
-  const [decoded, setDecoded] = useState<any>(null);
+  const [decoded, setDecoded] = useState<ReturnType<typeof decodeTransactionData> | null>(null);
   const [error, setError] = useState("");
 
   function decodeTransaction() {
     setError("");
     setDecoded(null);
     try {
-      if (!txData.trim()) {
-        setError("Please enter transaction data");
-        return;
-      }
-
-      let data = txData.trim();
-
-      if (data.startsWith("0x") || data.length % 2 !== 0) {
-        try {
-          const decodedBytes = Buffer.from(data, "base64");
-          data = decodedBytes.toString("hex");
-        } catch {}
-      }
-
-      const bytes = Buffer.from(data, "hex");
-      const result: any = {
-        length: bytes.length,
-        hex: data.slice(0, 100) + (data.length > 100 ? "..." : ""),
-        bytes: Array.from(bytes.slice(0, 64)),
-        decodedHex: data.slice(0, 200) + (data.length > 200 ? "..." : ""),
-      };
-
-      const possibleProgramId = data.length >= 32 ? bytes.slice(0, 32).toString("hex") : null;
-      if (possibleProgramId) {
-        result.programId = possibleProgramId;
-      }
-
-      setDecoded(result);
+      setDecoded(decodeTransactionData(txData));
     } catch (err) {
-      setError("Failed to decode transaction data");
+      setError(err instanceof Error ? err.message : "Failed to decode transaction data");
     }
   }
 
@@ -93,12 +67,6 @@ export default function TxDecoderPage() {
                 <span className="text-white/50 text-sm">Total Bytes:</span>
                 <span className="text-white font-mono ml-2">{decoded.length}</span>
               </div>
-              {decoded.programId && (
-                <div>
-                  <span className="text-white/50 text-sm">Program ID (hex):</span>
-                  <span className="text-white font-mono text-xs break-all block mt-1">{decoded.programId}</span>
-                </div>
-              )}
               <div>
                 <span className="text-white/50 text-sm">Raw Data:</span>
                 <pre className="text-white/70 font-mono text-xs bg-black/20 p-3 rounded-lg mt-2 overflow-x-auto">

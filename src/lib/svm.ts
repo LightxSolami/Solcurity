@@ -159,7 +159,7 @@ export async function getTokenAccounts(
     }).catch(() => ({ value: [] }));
 
     const token2022Accounts = await connection.getTokenAccountsByOwner(publicKey, {
-      programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+      programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
     }).catch(() => ({ value: [] }));
 
     for (const account of [...tokenAccounts.value, ...token2022Accounts.value]) {
@@ -368,7 +368,7 @@ function getAccountType(pubkey: PublicKey, accountInfo: AccountInfo<Buffer<Array
 
   const knownPrograms: Record<string, string> = {
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": "SPL Token Account",
-    "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ": "Token-2022 Account",
+    "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb": "Token-2022 Account",
     "BPFLoader1111111111111111111111111111111111": "BPF Loader",
     "BPFLoader2111111111111111111111111111111111": "BPF Loader v2",
     "BPFLoaderUpgradeab1e11111111111111111111111": "BPF Upgradeable Loader",

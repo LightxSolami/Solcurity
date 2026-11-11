@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Connection, PublicKey } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { createSolanaConnection } from "@/lib/solana-rpc";
+import { validatePublicRpcUrl } from "@/lib/public-rpc-url";
+import { z } from "zod";
 
-const PUMPFUN_PROGRAM_ID = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
-const PUMPFUN_FEE_RECIPIENT = new PublicKey("CebN5WGQ4jvEPvsVU4EoHEpgzq1VV7AbicfhtW4xC9iM");
+const TOKEN_2022_PROGRAM_ID = new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 interface PumpFunToken {
   mint: string;
@@ -20,6 +22,7 @@ interface PumpFunToken {
   realTokenReserves: number;
   totalSupply: number;
   complete: boolean;
+  usdMarketCap: number | null;
 }
 
 interface HolderInfo {
@@ -32,9 +35,9 @@ interface PumpFunAnalytics {
   token: PumpFunToken;
   price: {
     sol: number;
-    usd: number;
+    usd: number | null;
     marketCap: number;
-    marketCapUsd: number;
+    marketCapUsd: number | null;
   };
   bondingCurve: {
     progress: number;
@@ -42,9 +45,9 @@ interface PumpFunAnalytics {
     tokensRemaining: number;
   };
   holders: {
-    total: number;
+    topAccountCount: number;
     top10Percentage: number;
-    top50Percentage: number;
+    top20Percentage: number;
     holders: HolderInfo[];
   };
   liquidity: {
@@ -67,53 +70,124 @@ interface PumpFunAnalytics {
   }>;
 }
 
-async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken | null> {
-  try {
-    const response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`);
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    return null;
+class UpstreamError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
   }
 }
 
-async function fetchTokenHolders(mint: string, rpcUrl: string): Promise<HolderInfo[]> {
-  try {
-    const connection = createSolanaConnection(rpcUrl);
-    const mintPubkey = new PublicKey(mint);
-    
-    const accounts = await connection.getParsedTokenAccountsByOwner(
-      mintPubkey,
-      { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-    );
-
-    const holders: HolderInfo[] = [];
-    let totalSupply = 0;
-
-    for (const account of accounts.value) {
-      const parsed = account.account.data.parsed?.info;
-      if (!parsed) continue;
-
-      const amount = parsed.tokenAmount?.uiAmount || 0;
-      if (amount > 0) {
-        holders.push({
-          address: parsed.owner,
-          balance: parsed.tokenAmount?.uiAmount || 0,
-          percentage: 0
-        });
-        totalSupply += parsed.tokenAmount?.uiAmount || 0;
-      }
-    }
-
-    holders.sort((a, b) => b.balance - a.balance);
-    
-    return holders.map(h => ({
-      ...h,
-      percentage: totalSupply > 0 ? (h.balance / totalSupply) * 100 : 0
-    }));
-  } catch {
-    return [];
+function getString(data: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    if (typeof data[key] === "string") return data[key] as string;
   }
+  return "";
+}
+
+function getNumber(data: Record<string, unknown>, ...keys: string[]): number {
+  for (const key of keys) {
+    const value = Number(data[key]);
+    if (data[key] !== undefined && data[key] !== null && Number.isFinite(value)) {
+      return value;
+    }
+  }
+  return 0;
+}
+
+function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: string): PumpFunToken {
+  const usdMarketCap = getNumber(data, "usd_market_cap", "usdMarketCap");
+  return {
+    mint: getString(data, "mint") || requestedMint,
+    name: getString(data, "name") || "Unknown token",
+    symbol: getString(data, "symbol") || "UNKNOWN",
+    uri: getString(data, "uri", "metadata_uri"),
+    bondingCurve: getString(data, "bondingCurve", "bonding_curve"),
+    associatedBondingCurve: getString(data, "associatedBondingCurve", "associated_bonding_curve"),
+    creator: getString(data, "creator"),
+    createdTimestamp: getNumber(data, "createdTimestamp", "created_timestamp"),
+    virtualSolReserves: getNumber(data, "virtualSolReserves", "virtual_sol_reserves"),
+    virtualTokenReserves: getNumber(data, "virtualTokenReserves", "virtual_token_reserves"),
+    realSolReserves: getNumber(data, "realSolReserves", "real_sol_reserves"),
+    realTokenReserves: getNumber(data, "realTokenReserves", "real_token_reserves"),
+    totalSupply: getNumber(data, "totalSupply", "total_supply"),
+    complete: data.complete === true || data.complete === "true",
+    usdMarketCap: usdMarketCap > 0 ? usdMarketCap : null,
+  };
+}
+
+async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
+  let response: Response;
+  try {
+    response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw new UpstreamError(
+      error instanceof Error && error.name === "TimeoutError"
+        ? "Pump.fun API request timed out"
+        : "Unable to reach the Pump.fun API",
+      502
+    );
+  }
+
+  if (response.status === 404) {
+    throw new UpstreamError("Token not found on Pump.fun", 404);
+  }
+  if (response.status === 403) {
+    throw new UpstreamError("Pump.fun API access denied (403). The API may be blocking requests from this server.", 403);
+  }
+  if (!response.ok) {
+    throw new UpstreamError(`Pump.fun API returned HTTP ${response.status}`, 502);
+  }
+
+  const data: unknown = await response.json();
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new UpstreamError("Pump.fun API returned invalid token data", 502);
+  }
+
+  return normalizePumpFunToken(data as Record<string, unknown>, mint);
+}
+
+async function fetchTokenHolders(mint: string, rpcUrl?: string): Promise<HolderInfo[]> {
+  const connection = createSolanaConnection(rpcUrl);
+  const mintPubkey = new PublicKey(mint);
+  const [largestAccounts, supply] = await Promise.all([
+    connection.getTokenLargestAccounts(mintPubkey),
+    connection.getTokenSupply(mintPubkey),
+  ]);
+  const tokenProgram = await connection.getAccountInfo(mintPubkey);
+  if (!tokenProgram || ![TOKEN_PROGRAM_ID.toBase58(), TOKEN_2022_PROGRAM_ID.toBase58()].includes(tokenProgram.owner.toBase58())) {
+    throw new Error("The mint is not owned by a supported Solana token program");
+  }
+
+  const parsedAccounts = await Promise.all(
+    largestAccounts.value.map((account) => connection.getParsedAccountInfo(account.address))
+  );
+  const totalSupply = Number(supply.value.uiAmountString ?? 0);
+
+  const balancesByOwner = new Map<string, number>();
+  largestAccounts.value.forEach((account, index) => {
+    const accountInfo = parsedAccounts[index].value?.data;
+    if (!accountInfo || !("parsed" in accountInfo)) return;
+
+    const parsed = accountInfo.parsed.info;
+    const balance = account.uiAmount ?? 0;
+    if (typeof parsed.owner !== "string" || balance <= 0) return;
+    balancesByOwner.set(parsed.owner, (balancesByOwner.get(parsed.owner) ?? 0) + balance);
+  });
+
+  return Array.from(balancesByOwner, ([address, balance]) => ({
+    address,
+    balance,
+    percentage: totalSupply > 0 ? (balance / totalSupply) * 100 : 0,
+  })).sort((a, b) => b.balance - a.balance);
 }
 
 async function fetchRecentTrades(mint: string, limit = 20): Promise<Array<{
@@ -126,37 +200,77 @@ async function fetchRecentTrades(mint: string, limit = 20): Promise<Array<{
   trader: string;
 }>> {
   try {
-    const response = await fetch(`https://frontend-api.pump.fun/trades/${mint}?limit=${limit}`);
+    const response = await fetch(`https://frontend-api.pump.fun/trades/${mint}?limit=${limit}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!response.ok) return [];
-    const trades = await response.json();
-    return trades.map((t: any) => ({
-      signature: t.signature,
-      type: t.sol_amount > 0 ? "buy" : "sell",
-      solAmount: Math.abs(t.sol_amount) / 1e9,
-      tokenAmount: Math.abs(t.token_amount),
-      price: t.price,
-      timestamp: t.timestamp,
-      trader: t.trader
-    }));
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) return [];
+
+    return data.flatMap((trade): Array<{
+      signature: string;
+      type: "buy" | "sell";
+      solAmount: number;
+      tokenAmount: number;
+      price: number;
+      timestamp: number;
+      trader: string;
+    }> => {
+      if (!trade || typeof trade !== "object") return [];
+      const item = trade as Record<string, unknown>;
+      const solAmountRaw = getNumber(item, "sol_amount", "solAmount");
+      const tokenAmount = getNumber(item, "token_amount", "tokenAmount");
+      const trader = getString(item, "trader", "user");
+      const timestamp = getNumber(item, "timestamp");
+      if (!trader || !timestamp) return [];
+
+      const isBuy = typeof item.is_buy === "boolean"
+        ? item.is_buy
+        : solAmountRaw >= 0;
+      return [{
+        signature: getString(item, "signature"),
+        type: isBuy ? "buy" : "sell",
+        solAmount: Math.abs(solAmountRaw) / 1e9,
+        tokenAmount: Math.abs(tokenAmount),
+        price: getNumber(item, "price"),
+        timestamp,
+        trader,
+      }];
+    });
   } catch {
     return [];
   }
 }
 
-function calculatePrice(token: PumpFunToken): { sol: number; usd: number; marketCap: number; marketCapUsd: number } {
-  const solPriceUsd = 180; // Approximate SOL price
+function calculatePrice(token: PumpFunToken): {
+  sol: number;
+  usd: number | null;
+  marketCap: number;
+  marketCapUsd: number | null;
+} {
   if (token.virtualSolReserves === 0 || token.virtualTokenReserves === 0) {
-    return { sol: 0, usd: 0, marketCap: 0, marketCapUsd: 0 };
+    return { sol: 0, usd: null, marketCap: 0, marketCapUsd: token.usdMarketCap };
   }
-  
-  const pricePerToken = token.virtualSolReserves / token.virtualTokenReserves;
-  const marketCap = pricePerToken * token.totalSupply;
-  
+
+  const pricePerToken =
+    (token.virtualSolReserves / 1e9) / (token.virtualTokenReserves / 1e6);
+  const marketCap = pricePerToken * (token.totalSupply / 1e6);
+
   return {
     sol: pricePerToken,
-    usd: pricePerToken * solPriceUsd,
+    usd: token.usdMarketCap && marketCap > 0
+      ? (token.usdMarketCap / marketCap) * pricePerToken
+      : null,
     marketCap,
-    marketCapUsd: marketCap * solPriceUsd
+    marketCapUsd: token.usdMarketCap,
   };
 }
 
@@ -168,27 +282,49 @@ function calculateBondingCurveProgress(token: PumpFunToken): { progress: number;
   return {
     progress,
     solNeeded: Math.max(0, targetSol - currentSol),
-    tokensRemaining: token.virtualTokenReserves - token.realTokenReserves
+    tokensRemaining: Math.max(0, token.virtualTokenReserves - token.realTokenReserves) / 1e6
   };
 }
 
+const PumpFunRequestSchema = z.object({
+  action: z.enum(["analyze", "price", "holders", "trades", "bonding-curve"]),
+  mint: z.string().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/),
+  rpcUrl: z.string().url().optional(),
+}).refine(({ mint }) => {
+  try {
+    new PublicKey(mint);
+    return true;
+  } catch {
+    return false;
+  }
+}, { path: ["mint"], message: "Invalid Solana mint address" });
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { action, mint, rpcUrl } = body;
-
-    if (!mint) {
-      return NextResponse.json({ error: "mint required" }, { status: 400 });
+    const parsedRequest = PumpFunRequestSchema.safeParse(await request.json());
+    if (!parsedRequest.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: parsedRequest.error.flatten() },
+        { status: 400 }
+      );
     }
 
-    const connection = createSolanaConnection(rpcUrl);
+    const { action, mint } = parsedRequest.data;
+    let rpcUrl = parsedRequest.data.rpcUrl;
+    if (rpcUrl) {
+      try {
+        rpcUrl = (await validatePublicRpcUrl(rpcUrl)).toString();
+      } catch (error) {
+        return NextResponse.json(
+          { error: error instanceof Error ? error.message : "Invalid RPC URL" },
+          { status: 400 }
+        );
+      }
+    }
 
     switch (action) {
       case "analyze": {
         const token = await fetchPumpFunTokenData(mint);
-        if (!token) {
-          return NextResponse.json({ error: "Token not found on PumpFun" }, { status: 404 });
-        }
 
         const [holders, trades] = await Promise.all([
           fetchTokenHolders(mint, rpcUrl),
@@ -199,21 +335,19 @@ export async function POST(request: NextRequest) {
         const bondingCurve = calculateBondingCurveProgress(token);
         
         const top10Percentage = holders.slice(0, 10).reduce((sum, h) => sum + h.percentage, 0);
-        const top50Percentage = holders.slice(0, 50).reduce((sum, h) => sum + h.percentage, 0);
-
         const analytics: PumpFunAnalytics = {
           token,
           price,
           bondingCurve,
           holders: {
-            total: holders.length,
+            topAccountCount: holders.length,
             top10Percentage,
-            top50Percentage,
+            top20Percentage: holders.reduce((sum, h) => sum + h.percentage, 0),
             holders: holders.slice(0, 100)
           },
           liquidity: {
             sol: token.realSolReserves / 1e9,
-            tokens: token.realTokenReserves
+            tokens: token.realTokenReserves / 1e6
           },
           creator: {
             address: token.creator,
@@ -228,9 +362,6 @@ export async function POST(request: NextRequest) {
 
       case "price": {
         const token = await fetchPumpFunTokenData(mint);
-        if (!token) {
-          return NextResponse.json({ error: "Token not found" }, { status: 404 });
-        }
         return NextResponse.json({ price: calculatePrice(token) });
       }
 
@@ -250,9 +381,6 @@ export async function POST(request: NextRequest) {
 
       case "bonding-curve": {
         const token = await fetchPumpFunTokenData(mint);
-        if (!token) {
-          return NextResponse.json({ error: "Token not found" }, { status: 404 });
-        }
         return NextResponse.json({ bondingCurve: calculateBondingCurveProgress(token) });
       }
 
@@ -262,8 +390,8 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("PumpFun API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : "Internal server error" },
+      { status: error instanceof UpstreamError ? error.status : 500 }
     );
   }
 }

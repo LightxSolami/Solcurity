@@ -140,7 +140,7 @@ export function BubbleMapFullScreen({ address }: BubbleMapFullScreenProps) {
               programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
             }),
             connection.getParsedTokenAccountsByOwner(pubkey, {
-              programId: new PublicKey("TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ"),
+              programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
             }),
           ]);
 

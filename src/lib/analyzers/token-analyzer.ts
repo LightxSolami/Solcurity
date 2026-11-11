@@ -2,7 +2,7 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { TokenInfo } from "@/lib/types";
 
 const SPL_TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEh89ASGF8P25BN8cGxqZ";
+const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 
 /** Minimal, widely-used metadata program for symbol/name resolution. */
 const METADATA_PROGRAM = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s";
