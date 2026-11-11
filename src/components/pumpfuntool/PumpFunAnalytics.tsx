@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
+import Link from "next/link";
 
 interface PumpFunAnalyticsData {
   token: {
@@ -390,10 +391,13 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
           body: JSON.stringify({ action: "analyze", mint, rpcUrl: rpcUrl || "https://api.mainnet-beta.solana.com" })
         });
         const data = await res.json();
-        if (data.error) throw new Error(data.error);
+        if (!res.ok) {
+          setError(res.status >= 500 ? "service-unavailable" : data.error || "Failed to fetch analytics");
+          return;
+        }
         setAnalytics(data.analytics);
-      } catch (err: any) {
-        setError(err.message || "Failed to fetch analytics");
+      } catch {
+        setError("service-unavailable");
       } finally {
         setLoading(false);
       }
@@ -415,9 +419,22 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
   if (error) {
     return (
-      <div className="bg-risk-critical/10 border border-risk-critical/30 rounded-2xl p-6">
-        <p className="text-risk-critical">{error}</p>
-        <p className="text-white/50 text-sm mt-2">Make sure the token is a valid PumpFun token.</p>
+      <div className="bg-white/5 border border-white/10 rounded-2xl p-6" role="status">
+        <p className="text-white font-medium">
+          {error === "service-unavailable"
+            ? "Pump.fun analytics are temporarily unavailable."
+            : error === "Token not found on Pump.fun"
+              ? "This token was not found on Pump.fun."
+              : error}
+        </p>
+        <p className="text-white/60 text-sm mt-2">
+          {error === "service-unavailable"
+            ? "This does not affect the other Solana tools. Please try again later."
+            : "Check the mint address and try again."}
+        </p>
+        <Link href="/tools" className="inline-block mt-4 text-solana-blue hover:text-white text-sm">
+          Back to all tools
+        </Link>
       </div>
     );
   }

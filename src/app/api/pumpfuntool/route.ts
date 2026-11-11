@@ -115,12 +115,21 @@ function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: str
 }
 
 async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
+  // Try PumpPortal API first (more permissive)
+  try {
+    return await fetchPumpFunTokenDataFromPumpPortal(mint);
+  } catch (error) {
+    // If PumpPortal fails, try original Pump.fun API as fallback
+    console.warn("PumpPortal failed, trying Pump.fun:", error);
+  }
+
+  // Fallback to original Pump.fun API
   let response: Response;
   try {
     response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
       headers: {
         Accept: "application/json",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept-Language": "en-US,en;q=0.9",
         "Accept-Encoding": "gzip, deflate, br",
         "Cache-Control": "no-cache",
@@ -141,7 +150,7 @@ async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
     throw new UpstreamError("Token not found on Pump.fun", 404);
   }
   if (response.status === 403) {
-    throw new UpstreamError("Pump.fun API access denied (403). The API may be blocking requests from this server.", 403);
+    throw new UpstreamError("Pump.fun data is temporarily unavailable. Please try again later.", 503);
   }
   if (!response.ok) {
     throw new UpstreamError(`Pump.fun API returned HTTP ${response.status}`, 502);
@@ -153,6 +162,64 @@ async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
   }
 
   return normalizePumpFunToken(data as Record<string, unknown>, mint);
+}
+
+async function fetchPumpFunTokenDataFromPumpPortal(mint: string): Promise<PumpFunToken> {
+  let response: Response;
+  try {
+    response = await fetch(`https://pumpportal.fun/api/coin/${mint}`, {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    throw new UpstreamError(
+      error instanceof Error && error.name === "TimeoutError"
+        ? "PumpPortal API request timed out"
+        : "Unable to reach PumpPortal API",
+      502
+    );
+  }
+
+  if (response.status === 404) {
+    throw new UpstreamError("Token not found on PumpPortal", 404);
+  }
+  if (response.status === 403) {
+    throw new UpstreamError("PumpPortal API access denied (403)", 403);
+  }
+  if (!response.ok) {
+    throw new UpstreamError(`PumpPortal API returned HTTP ${response.status}`, 502);
+  }
+
+  const data: unknown = await response.json();
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new UpstreamError("PumpPortal API returned invalid token data", 502);
+  }
+
+  return normalizePumpPortalToken(data as Record<string, unknown>, mint);
+}
+
+function normalizePumpPortalToken(data: Record<string, unknown>, requestedMint: string): PumpFunToken {
+  return {
+    mint: data.mint as string || data.mint as string || requestedMint,
+    name: data.name as string || "Unknown token",
+    symbol: data.symbol as string || "UNKNOWN",
+    uri: data.metadata_uri as string || data.uri as string || "",
+    bondingCurve: data.bonding_curve as string || data.bondingCurve as string || "",
+    associatedBondingCurve: data.associated_bonding_curve as string || data.associatedBondingCurve as string || "",
+    creator: data.creator as string || "",
+    createdTimestamp: Number(data.created_timestamp || data.createdTimestamp || Date.now()),
+    virtualSolReserves: Number(data.virtual_sol_reserves || data.virtualSolReserves || 0),
+    virtualTokenReserves: Number(data.virtual_token_reserves || data.virtualTokenReserves || 0),
+    realSolReserves: Number(data.real_sol_reserves || data.realSolReserves || 0),
+    realTokenReserves: Number(data.real_token_reserves || data.realTokenReserves || 0),
+    totalSupply: Number(data.total_supply || data.totalSupply || 0),
+    complete: data.complete === true || data.complete === "true",
+    usdMarketCap: null,
+  };
 }
 
 async function fetchTokenHolders(mint: string, rpcUrl?: string): Promise<HolderInfo[]> {
