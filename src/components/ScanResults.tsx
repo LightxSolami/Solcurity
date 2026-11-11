@@ -10,6 +10,7 @@ import { TransactionExplorer } from "@/components/TransactionExplorer";
 import { ProgramInteractions } from "@/components/ProgramInteractions";
 import { SecurityWarning } from "@/components/SecurityWarning";
 import Link from "next/link";
+import Image from "next/image";
 
 interface ScanResultsProps {
   address: string;
@@ -177,14 +178,12 @@ export function ScanResults({ address }: ScanResultsProps) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-white hover:bg-purple-500/30 transition-colors text-sm"
             >
-              <img
+              <Image
                 src="https://pump.fun/favicon.ico"
                 alt="Pump Fun"
+                width={16}
+                height={16}
                 className="w-4 h-4 object-contain"
-                onError={(e) => {
-                  const img = e.target as HTMLImageElement;
-                  img.style.display = 'none';
-                }}
               />
               PumpFun: FVohCadz...CQPump
             </a>

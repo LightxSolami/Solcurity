@@ -23,6 +23,12 @@ interface PumpFunToken {
   totalSupply: number;
   complete: boolean;
   usdMarketCap: number | null;
+  dataSource?: "pumpfun" | "dexscreener";
+  marketPriceSol?: number | null;
+  marketPriceUsd?: number | null;
+  marketCapSol?: number | null;
+  dexId?: string;
+  marketUrl?: string;
 }
 
 interface HolderInfo {
@@ -40,14 +46,16 @@ interface PumpFunAnalytics {
     marketCapUsd: number | null;
   };
   bondingCurve: {
-    progress: number;
-    solNeeded: number;
-    tokensRemaining: number;
+    progress: number | null;
+    solNeeded: number | null;
+    tokensRemaining: number | null;
+    available: boolean;
   };
   holders: {
     topAccountCount: number;
     top10Percentage: number;
     top20Percentage: number;
+    available: boolean;
     holders: HolderInfo[];
   };
   liquidity: {
@@ -93,6 +101,12 @@ function getNumber(data: Record<string, unknown>, ...keys: string[]): number {
   return 0;
 }
 
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: string): PumpFunToken {
   const usdMarketCap = getNumber(data, "usd_market_cap", "usdMarketCap");
   return {
@@ -115,15 +129,39 @@ function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: str
 }
 
 async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
-  // Try PumpPortal API first (more permissive)
   try {
     return await fetchPumpFunTokenDataFromPumpPortal(mint);
-  } catch (error) {
-    // If PumpPortal fails, try original Pump.fun API as fallback
-    console.warn("PumpPortal failed, trying Pump.fun:", error);
-  }
+  } catch {
+    try {
+      return await fetchPumpFunTokenDataFromDexScreener(mint);
+    } catch (dexScreenerError) {
+      try {
+        return await fetchPumpFunTokenDataFromPumpFun(mint);
+      } catch (pumpFunError) {
+        if (pumpFunError instanceof UpstreamError && pumpFunError.status === 404) {
+          throw pumpFunError;
+        }
+        if (
+          dexScreenerError instanceof UpstreamError &&
+          dexScreenerError.message === "This mint does not appear to be a Pump.fun token"
+        ) {
+          throw dexScreenerError;
+        }
 
-  // Fallback to original Pump.fun API
+        console.error("Pump.fun and DEX Screener token lookup failed:", {
+          dexScreenerError,
+          pumpFunError,
+        });
+        throw new UpstreamError(
+          "Token market data is temporarily unavailable from Pump.fun and DEX Screener.",
+          503
+        );
+      }
+    }
+  }
+}
+
+async function fetchPumpFunTokenDataFromPumpFun(mint: string): Promise<PumpFunToken> {
   let response: Response;
   try {
     response = await fetch(`https://frontend-api.pump.fun/coins/${mint}`, {
@@ -162,6 +200,108 @@ async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
   }
 
   return normalizePumpFunToken(data as Record<string, unknown>, mint);
+}
+
+async function fetchPumpFunTokenDataFromDexScreener(mint: string): Promise<PumpFunToken> {
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://api.dexscreener.com/token-pairs/v1/solana/${encodeURIComponent(mint)}`,
+      {
+        headers: { Accept: "application/json" },
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      }
+    );
+  } catch {
+    throw new UpstreamError("Unable to reach DEX Screener", 502);
+  }
+
+  if (!response.ok) {
+    throw new UpstreamError(`DEX Screener returned HTTP ${response.status}`, 502);
+  }
+
+  const data: unknown = await response.json();
+  if (!Array.isArray(data)) {
+    throw new UpstreamError("DEX Screener returned invalid market data", 502);
+  }
+
+  const pairs = data.filter((value): value is Record<string, unknown> => {
+    const pair = getRecord(value);
+    const baseToken = getRecord(pair?.baseToken);
+    return !!pair &&
+      !!baseToken &&
+      getString(pair, "chainId") === "solana" &&
+      getString(baseToken, "address").toLowerCase() === mint.toLowerCase();
+  });
+
+  if (pairs.length === 0) {
+    throw new UpstreamError("Token not found in DEX Screener markets", 404);
+  }
+
+  const isPumpFunMarket = pairs.some((pair) =>
+    getString(pair, "dexId").toLowerCase() === "pumpfun"
+  ) || mint.toLowerCase().endsWith("pump");
+  if (!isPumpFunMarket) {
+    throw new UpstreamError("This mint does not appear to be a Pump.fun token", 404);
+  }
+
+  const pair = pairs.sort(
+    (left, right) =>
+      getNumber(
+        (right.liquidity as Record<string, unknown> | undefined) ?? {},
+        "usd"
+      ) -
+      getNumber(
+        (left.liquidity as Record<string, unknown> | undefined) ?? {},
+        "usd"
+      )
+  )[0];
+  const baseToken = getRecord(pair.baseToken) ?? {};
+  const quoteToken = getRecord(pair.quoteToken) ?? {};
+  const liquidity = getRecord(pair.liquidity) ?? {};
+  const priceSol = getNumber(pair, "priceNative");
+  const priceUsd = getNumber(pair, "priceUsd");
+  const marketCapUsd = getNumber(pair, "marketCap") || getNumber(pair, "fdv");
+  const quoteIsSol =
+    getString(quoteToken, "symbol").toUpperCase() === "SOL" ||
+    getString(quoteToken, "address") === "So11111111111111111111111111111111111111112";
+  const marketCapSol =
+    marketCapUsd > 0 && priceUsd > 0 && priceSol > 0
+      ? marketCapUsd / (priceUsd / priceSol)
+      : null;
+  const totalSupply =
+    marketCapUsd > 0 && priceUsd > 0
+      ? (marketCapUsd / priceUsd) * 1e6
+      : 0;
+  const dexId = getString(pair, "dexId");
+  const pairAddress = getString(pair, "pairAddress");
+
+  return {
+    mint,
+    name: getString(baseToken, "name") || "Unknown token",
+    symbol: getString(baseToken, "symbol") || "UNKNOWN",
+    uri: "",
+    bondingCurve: "",
+    associatedBondingCurve: "",
+    creator: "",
+    createdTimestamp: Math.floor(getNumber(pair, "pairCreatedAt") / 1000),
+    virtualSolReserves: 0,
+    virtualTokenReserves: 0,
+    realSolReserves: quoteIsSol ? getNumber(liquidity, "quote") * 1e9 : 0,
+    realTokenReserves: getNumber(liquidity, "base") * 1e6,
+    totalSupply,
+    complete: dexId !== "pumpfun",
+    usdMarketCap: marketCapUsd > 0 ? marketCapUsd : null,
+    dataSource: "dexscreener",
+    marketPriceSol: priceSol > 0 ? priceSol : null,
+    marketPriceUsd: priceUsd > 0 ? priceUsd : null,
+    marketCapSol,
+    dexId,
+    marketUrl: pairAddress
+      ? `https://dexscreener.com/solana/${encodeURIComponent(pairAddress)}`
+      : undefined,
+  };
 }
 
 async function fetchPumpFunTokenDataFromPumpPortal(mint: string): Promise<PumpFunToken> {
@@ -323,6 +463,15 @@ function calculatePrice(token: PumpFunToken): {
   marketCap: number;
   marketCapUsd: number | null;
 } {
+  if (token.dataSource === "dexscreener") {
+    return {
+      sol: token.marketPriceSol ?? 0,
+      usd: token.marketPriceUsd ?? null,
+      marketCap: token.marketCapSol ?? 0,
+      marketCapUsd: token.usdMarketCap,
+    };
+  }
+
   if (token.virtualSolReserves === 0 || token.virtualTokenReserves === 0) {
     return { sol: 0, usd: null, marketCap: 0, marketCapUsd: token.usdMarketCap };
   }
@@ -341,7 +490,16 @@ function calculatePrice(token: PumpFunToken): {
   };
 }
 
-function calculateBondingCurveProgress(token: PumpFunToken): { progress: number; solNeeded: number; tokensRemaining: number } {
+function calculateBondingCurveProgress(token: PumpFunToken): {
+  progress: number | null;
+  solNeeded: number | null;
+  tokensRemaining: number | null;
+  available: boolean;
+} {
+  if (token.dataSource === "dexscreener") {
+    return { progress: null, solNeeded: null, tokensRemaining: null, available: false };
+  }
+
   const targetSol = 85; // ~85 SOL to complete bonding curve
   const currentSol = token.realSolReserves / 1e9;
   const progress = Math.min((currentSol / targetSol) * 100, 100);
@@ -349,7 +507,8 @@ function calculateBondingCurveProgress(token: PumpFunToken): { progress: number;
   return {
     progress,
     solNeeded: Math.max(0, targetSol - currentSol),
-    tokensRemaining: Math.max(0, token.virtualTokenReserves - token.realTokenReserves) / 1e6
+    tokensRemaining: Math.max(0, token.virtualTokenReserves - token.realTokenReserves) / 1e6,
+    available: true,
   };
 }
 
@@ -392,11 +551,21 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case "analyze": {
         const token = await fetchPumpFunTokenData(mint);
+        const holderLookup = token.dataSource !== "dexscreener" || rpcUrl
+          ? fetchTokenHolders(mint, rpcUrl).then(
+              (holders) => ({ available: true, holders }),
+              (error: unknown) => {
+                console.warn("PumpFun holder lookup failed:", error);
+                return { available: false, holders: [] as HolderInfo[] };
+              }
+            )
+          : Promise.resolve({ available: false, holders: [] as HolderInfo[] });
 
-        const [holders, trades] = await Promise.all([
-          fetchTokenHolders(mint, rpcUrl),
-          fetchRecentTrades(mint, 50)
+        const [holdersResult, trades] = await Promise.all([
+          holderLookup,
+          fetchRecentTrades(mint, 50),
         ]);
+        const { holders } = holdersResult;
 
         const price = calculatePrice(token);
         const bondingCurve = calculateBondingCurveProgress(token);
@@ -410,6 +579,7 @@ export async function POST(request: NextRequest) {
             topAccountCount: holders.length,
             top10Percentage,
             top20Percentage: holders.reduce((sum, h) => sum + h.percentage, 0),
+            available: holdersResult.available,
             holders: holders.slice(0, 100)
           },
           liquidity: {
