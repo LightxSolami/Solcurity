@@ -58,7 +58,8 @@ const tools = [
   },
 ];
 
-const categories = Array.from(new Set(tools.map((t) => t.category)));
+const pumpFunTool = tools.find((tool) => tool.href === "/tools/pumpfuntool");
+const utilityTools = tools.filter((tool) => tool.href !== "/tools/pumpfuntool");
 
 export default function ToolsPage() {
   return (
@@ -69,38 +70,33 @@ export default function ToolsPage() {
       </div>
 
       <div className="space-y-10">
-        {categories.map((category) => (
-          <section key={category}>
+        {pumpFunTool && (
+          <section>
             <h2 className="text-lg font-semibold text-white/50 uppercase tracking-wider mb-6 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-solana-purple/20 flex items-center justify-center text-solana-blue text-sm font-bold">
-                {category.charAt(0)}
+              <span className="w-8 h-8 rounded-lg bg-solana-yellow/20 flex items-center justify-center text-solana-yellow text-sm font-bold">
+                P
               </span>
-              {category}
+              Trading
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {tools.filter((t) => t.category === category).map((tool) => (
-                <Link
-                  key={tool.name}
-                  href={tool.href}
-                  className="group bg-solana-card border border-white/10 rounded-2xl p-6 hover:border-solana-purple/30 hover:bg-solana-purple/5 transition-all duration-300"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-solana-purple/20 flex items-center justify-center group-hover:bg-solana-purple/30 transition-colors">
-                      {tool.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-white group-hover:text-solana-blue transition-colors">{tool.name}</h3>
-                      <p className="text-white/60 text-sm mt-1">{tool.description}</p>
-                    </div>
-                    <svg className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </Link>
-              ))}
+              <ToolCard tool={pumpFunTool} />
             </div>
           </section>
-        ))}
+        )}
+
+        <section>
+          <h2 className="text-lg font-semibold text-white/50 uppercase tracking-wider mb-6 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-solana-purple/20 flex items-center justify-center text-solana-blue text-sm font-bold">
+              U
+            </span>
+            Utilities
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {utilityTools.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
+          </div>
+        </section>
 
         {/* Quick Actions */}
         <section>
@@ -128,6 +124,28 @@ export default function ToolsPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+function ToolCard({ tool }: { tool: (typeof tools)[number] }) {
+  return (
+    <Link
+      href={tool.href}
+      className="group bg-solana-card border border-white/10 rounded-2xl p-6 hover:border-solana-purple/30 hover:bg-solana-purple/5 transition-all duration-300"
+    >
+      <div className="flex items-start gap-4">
+        <div className="w-12 h-12 rounded-xl bg-solana-purple/20 flex items-center justify-center group-hover:bg-solana-purple/30 transition-colors">
+          {tool.icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-white group-hover:text-solana-blue transition-colors">{tool.name}</h3>
+          <p className="text-white/60 text-sm mt-1">{tool.description}</p>
+        </div>
+        <svg className="w-5 h-5 text-white/30 group-hover:text-white/60 transition-colors flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </Link>
   );
 }
 
