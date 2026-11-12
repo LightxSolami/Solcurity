@@ -211,77 +211,20 @@ export function FuturisticWalletTracker() {
   const [walletInput, setWalletInput] = useState("");
   const [walletError, setWalletError] = useState<string | null>(null);
   const [loadingWallet, setLoadingWallet] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const timeRef = useRef(0);
   const particleRef = useRef<Array<{x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: string}>>([]);
 
-  // Helper functions
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "insider": return "#ef4444";
-      case "whale": return "#3b82f6";
-      case "exchange": return "#22c55e";
-      case "new": return "#f59e0b";
-      case "program": return "#8b5cf6";
-      default: return "#64748b";
-    }
-  };
-
-  const getTypeLabel = (type: string) => {
-    switch (type) {
-      case "insider": return "INSIDER";
-      case "whale": return "WHALE";
-      case "exchange": return "EXCHANGE";
-      case "new": return "NEW";
-      case "program": return "PROGRAM";
-      default: return "UNKNOWN";
-    }
-  };
-
-  const truncateAddr = (addr: string, start = 6, end = 4) => `${addr.slice(0, start)}...${addr.slice(-end)}`;
-
-  const formatNumber = (num: number, decimals = 2) => {
-    if (num >= 1e9) return (num / 1e9).toFixed(decimals) + "B";
-    if (num >= 1e6) return (num / 1e6).toFixed(decimals) + "M";
-    if (num >= 1e3) return (num / 1e3).toFixed(decimals) + "K";
-    return num.toFixed(decimals);
-  };
-
-  const formatSol = (num: number) => num.toFixed(4) + " SOL";
-  const formatUsd = (num: number | null) => num === null ? "N/A" : "$" + formatNumber(num, 2);
-  const formatPercentage = (num: number) => num.toFixed(2) + "%";
-
-  const getConnectionColor = (type: string) => {
-    switch (type) {
-      case "buy": return "#3b82f6";
-      case "sell": return "#ef4444";
-      case "swap": return "#f59e0b";
-      default: return "#22c55e";
-    }
-  }
-
-  const hexToRgba = (hex: string, alpha: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  }
-
-  const roundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
-    ctx.beginPath();
-    ctx.moveTo(x + r, y);
-    ctx.lineTo(x + w - r, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-    ctx.lineTo(x + w, y + h - r);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x, y + r);
-    ctx.quadraticCurveTo(x, y, x + r, y);
-    ctx.closePath();
-  };
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   // Track wallet handler
   const handleTrackWallet = useCallback(async () => {
@@ -323,7 +266,7 @@ export function FuturisticWalletTracker() {
       
       const balanceSol = (balance / 1e9).toFixed(4);
       alert(`Successfully tracked wallet: ${address.slice(0, 8)}...${address.slice(-6)}
-SOL Balance: ${balanceSol}
+SOL Balance: ${(balance / 1e9).toFixed(4)}
 Token Accounts: ${tokenCount}
 Recent Transactions: ${signatures.length}`);
       
@@ -352,13 +295,20 @@ Recent Transactions: ${signatures.length}`);
     resize();
     window.addEventListener("resize", resize);
 
-    const animate = () => {
-      timeRef.current += 0.016 * animationSpeed;
-      render(ctx, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+let lastTime = 0;
+    const animate = (currentTime: number) => {
+      const deltaTime = currentTime - lastTime;
+      // Cap frame rate to 60fps max, throttle on mobile
+      const minFrameTime = isMobile ? 1000 / 30 : 1000 / 60; // 30fps on mobile, 60fps on desktop
+      if (deltaTime >= minFrameTime) {
+        timeRef.current += deltaTime * 0.001 * animationSpeed;
+        render(ctx, canvas.width / window.devicePixelRatio, canvas.height / window.devicePixelRatio);
+        lastTime = currentTime;
+      }
       animationRef.current = requestAnimationFrame(animate);
     };
-    
-    animate();
+
+    animate(performance.now());
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
       window.removeEventListener("resize", resize);
@@ -608,7 +558,7 @@ Recent Transactions: ${signatures.length}`);
     }
   };
 
-  // Event handlers
+  // Event handlers - with touch support
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -633,10 +583,56 @@ Recent Transactions: ${signatures.length}`);
     setHoveredWallet(found);
   }, [cameraPosition, showInsidersOnly]);
 
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    const centerX = rect.width / 2 + cameraPosition.x * 0.1;
+    const centerY = rect.height / 2 + cameraPosition.y * 0.1;
+    
+    let found = null;
+    let minDist = 50;
+    
+    INITIAL_WALLETS.forEach((wallet) => {
+      if (showInsidersOnly && !wallet.isInsider) return;
+      const wx = centerX + wallet.x;
+      const wy = centerY + wallet.y;
+      const dist = Math.sqrt((x - wx) ** 2 + (y - wy) ** 2);
+      if (dist < minDist) {
+        minDist = dist;
+        found = wallet;
+      }
+    });
+    
+    setHoveredWallet(found);
+  }, [cameraPosition, showInsidersOnly]);
+
   const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+    const centerX = rect.width / 2 + cameraPosition.x * 0.1;
+    const centerY = rect.height / 2 + cameraPosition.y * 0.1;
+    
+    INITIAL_WALLETS.forEach((wallet) => {
+      if (showInsidersOnly && !wallet.isInsider) return;
+      const wx = centerX + wallet.x;
+      const wy = centerY + wallet.y;
+      const dist = Math.sqrt((x - wx) ** 2 + (y - wy) ** 2);
+      const size = Math.max(8, Math.min(40, wallet.balance / 1000));
+      if (dist < size + 10) {
+        setSelectedWallet(wallet);
+        setPanelOpen("analytics");
+      }
+    });
+  }, [showInsidersOnly]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    const touch = e.touches[0];
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
     const centerX = rect.width / 2 + cameraPosition.x * 0.1;
     const centerY = rect.height / 2 + cameraPosition.y * 0.1;
     
@@ -700,20 +696,20 @@ Recent Transactions: ${signatures.length}`);
     <div className="min-h-screen bg-[#050515] text-white overflow-hidden">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-[#050515]/95 backdrop-blur-sm border-b border-white/10">
-        <div className="max-w-full mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-full mx-auto px-4 py-3 flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-solana-purple to-solana-blue flex items-center justify-center">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03 3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0 3-4.03 3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
               </svg>
             </div>
-            <div>
+            <div className="hidden sm:block">
               <h1 className="text-xl font-bold tracking-tight">Solcurity Fly Map</h1>
               <p className="text-xs text-white/50">Real-time wallet intelligence & insider detection</p>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-white/70 text-sm">
               <span className={`h-2 w-2 rounded-full animate-pulse ${showInsidersOnly ? "bg-red-500" : "bg-green-500"}`} />
               LIVE
@@ -744,22 +740,22 @@ Recent Transactions: ${signatures.length}`);
         </div>
       </header>
 
-      {/* Wallet Address Input Bar */}
-      <div className="fixed top-16 left-0 right-0 z-30 bg-[#050515]/95 backdrop-blur-sm border-b border-white/10 px-4 py-3" style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        <div className="max-w-4xl mx-auto flex items-center gap-3">
-          <label className="text-white/60 text-sm font-medium whitespace-nowrap">Track Wallet:</label>
+      {/* Wallet Address Input Bar - responsive */}
+      <div className="fixed top-[60px] md:top-[72px] left-0 right-0 z-30 bg-[#050515]/95 backdrop-blur-sm border-b border-white/10 px-4 py-3" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="max-w-4xl mx-auto flex items-center gap-2 flex-wrap">
+          <label className="text-white/60 text-sm font-medium whitespace-nowrap hidden sm:block">Track Wallet:</label>
           <input
             type="text"
             value={walletInput}
             onChange={(e) => setWalletInput(e.target.value)}
             placeholder="Enter Solana wallet address (e.g., 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM)"
-            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-solana-purple text-base font-mono"
+            className="flex-1 min-w-0 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-solana-purple text-base font-mono"
             maxLength={44}
           />
           <button
             onClick={handleTrackWallet}
             disabled={!walletInput.trim() || loadingWallet}
-            className="px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            className="px-4 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {loadingWallet ? (
               <>
@@ -780,17 +776,19 @@ Recent Transactions: ${signatures.length}`);
       </div>
 
       {/* Main Map */}
-      <main className="pt-16 h-screen overflow-hidden">
+      <main className="pt-16 md:pt-24 h-screen overflow-hidden">
         <div className="relative h-full w-full flex">
           {/* Map Canvas */}
           <div className="flex-1 relative overflow-hidden">
             <canvas
               ref={canvasRef}
-              className="w-full h-full cursor-crosshair"
+              className="w-full h-full cursor-crosshair touch-none"
               onMouseMove={handleMouseMove}
               onClick={handleClick}
               onWheel={handleWheel}
               onMouseDown={handleMouseDown}
+              onTouchMove={handleTouchMove}
+              onTouchStart={handleTouchStart}
               style={{ touchAction: "none" }}
             />
             
@@ -860,7 +858,7 @@ Recent Transactions: ${signatures.length}`);
           </div>
 
           {/* Side Panels */}
-          <aside className="fixed right-0 top-16 bottom-0 w-96 bg-[#050515]/95 backdrop-blur-sm border-l border-white/10 overflow-y-auto z-30">
+          <aside className="fixed right-0 top-16 md:top-[72px] bottom-0 w-96 md:w-96 bg-[#050515]/95 backdrop-blur-sm border-l border-white/10 overflow-y-auto z-30 hidden lg:block">
             {/* Search */}
             <div className="p-4 border-b border-white/10">
               <input

@@ -1,0 +1,17 @@
+﻿
+> solcurity@0.1.0 dev
+> next dev
+
+node.exe :  ⚠ Port 3000 is in use, trying 3001 instead.
+Au caractère Ligne:1 : 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( ⚠ Port 3000 is...g 3001 instead.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  ▲ Next.js 14.2.15
+  - Local:        http://localhost:3001
+  - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 3s
