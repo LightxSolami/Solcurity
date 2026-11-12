@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { Connection as SolanaConnection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { createSolanaConnection } from "@/lib/solana-rpc";
 
 // Types
 interface WalletNode {
@@ -33,11 +35,11 @@ interface InsiderWallet {
   confidence: number;
   reasons: string[];
   knownAddresses: string[];
-  patterns: any[];
+  patterns: InsiderPattern[];
 }
 
 interface InsiderPattern {
-  type: string;
+  type: "coordinated_buy" | "coordinated_sell" | "sniping" | "wash_trading" | "front_running";
   timestamp: number;
   wallets: string[];
   token: string;
@@ -140,11 +142,23 @@ function truncateAddr(addr: string, start = 6, end = 4) {
   return `${addr.slice(0, start)}...${addr.slice(-end)}`;
 }
 
-function formatNumber(num: number) {
-  if (num >= 1e9) return (num / 1e9).toFixed(2) + "B";
-  if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
-  if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
-  return num.toString();
+function formatNumber(num: number, decimals = 2): string {
+  if (num >= 1e9) return (num / 1e9).toFixed(decimals) + "B";
+  if (num >= 1e6) return (num / 1e6).toFixed(decimals) + "M";
+  if (num >= 1e3) return (num / 1e3).toFixed(decimals) + "K";
+  return num.toFixed(decimals);
+}
+
+function formatSol(num: number): string {
+  return num.toFixed(4) + " SOL";
+}
+
+function formatUsd(num: number | null): string {
+  return num === null ? "N/A" : "$" + formatNumber(num, 2);
+}
+
+function formatPercentage(num: number): string {
+  return num.toFixed(2) + "%";
 }
 
 function getConnectionColor(type: string) {
@@ -156,7 +170,7 @@ function getConnectionColor(type: string) {
   }
 }
 
-function hexToRgba(hex: string, alpha: number) {
+function hexToRgba(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
@@ -177,14 +191,15 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+// Main Component
 export function FuturisticWalletTracker() {
   const [wallets] = useState(INITIAL_WALLETS);
   const [connections] = useState(CONNECTIONS);
   const [insiders] = useState(INSIDERS);
   const [selectedWallet, setSelectedWallet] = useState<any>(null);
   const [hoveredWallet, setHoveredWallet] = useState<any>(null);
-  const [timeRange, setTimeRange] = useState("24h");
-  const [viewMode, setViewMode] = useState("3d");
+  const [timeRange, setTimeRange] = useState<"1h" | "24h" | "7d">("24h");
+  const [viewMode, setViewMode] = useState<"3d" | "2d" | "network">("3d");
   const [showInsidersOnly, setShowInsidersOnly] = useState(false);
   const [showConnections, setShowConnections] = useState(true);
   const [showTrails, setShowTrails] = useState(true);
@@ -193,6 +208,9 @@ export function FuturisticWalletTracker() {
   const [rotation, setRotation] = useState({ x: 0, y: 0, z: 0 });
   const [searchQuery, setSearchQuery] = useState("");
   const [panelOpen, setPanelOpen] = useState("insiders");
+  const [walletInput, setWalletInput] = useState("");
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const [loadingWallet, setLoadingWallet] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -220,16 +238,20 @@ export function FuturisticWalletTracker() {
       case "program": return "PROGRAM";
       default: return "UNKNOWN";
     }
-  }
+  };
 
   const truncateAddr = (addr: string, start = 6, end = 4) => `${addr.slice(0, start)}...${addr.slice(-end)}`;
 
-  const formatNumber = (num: number) => {
-    if (num >= 1e9) return (num / 1e9).toFixed(2) + "B";
-    if (num >= 1e6) return (num / 1e6).toFixed(2) + "M";
-    if (num >= 1e3) return (num / 1e3).toFixed(1) + "K";
-    return num.toString();
-  }
+  const formatNumber = (num: number, decimals = 2) => {
+    if (num >= 1e9) return (num / 1e9).toFixed(decimals) + "B";
+    if (num >= 1e6) return (num / 1e6).toFixed(decimals) + "M";
+    if (num >= 1e3) return (num / 1e3).toFixed(decimals) + "K";
+    return num.toFixed(decimals);
+  };
+
+  const formatSol = (num: number) => num.toFixed(4) + " SOL";
+  const formatUsd = (num: number | null) => num === null ? "N/A" : "$" + formatNumber(num, 2);
+  const formatPercentage = (num: number) => num.toFixed(2) + "%";
 
   const getConnectionColor = (type: string) => {
     switch (type) {
@@ -256,12 +278,61 @@ export function FuturisticWalletTracker() {
     ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
     ctx.lineTo(x + r, y + h);
     ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-    ctx.lineTo(x + r, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
     ctx.lineTo(x, y + r);
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
   };
+
+  // Track wallet handler
+  const handleTrackWallet = useCallback(async () => {
+    if (!walletInput.trim()) return;
+    
+    setWalletError(null);
+    setLoadingWallet(true);
+    
+    const address = walletInput.trim();
+    if (address.length < 32 || address.length > 44) {
+      setWalletError("Invalid Solana address format");
+      setLoadingWallet(false);
+      return;
+    }
+    
+    try {
+      const connection = createSolanaConnection();
+      const pubkey = new PublicKey(address);
+      
+      const accountInfo = await connection.getAccountInfo(pubkey);
+      if (!accountInfo) {
+        setWalletError("Wallet not found on Solana mainnet");
+        setLoadingWallet(false);
+        return;
+      }
+      
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubkey, {
+        programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      });
+      
+      const balance = await connection.getBalance(pubkey);
+      const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 20 });
+      
+      let tokenCount = 0;
+      for (const tokenAccount of tokenAccounts.value) {
+        const parsed = tokenAccount.account.data.parsed;
+        if (parsed?.info?.tokenAmount?.uiAmount) tokenCount++;
+      }
+      
+      const balanceSol = (balance / 1e9).toFixed(4);
+      alert(`Successfully tracked wallet: ${address.slice(0, 8)}...${address.slice(-6)}
+SOL Balance: ${balanceSol}
+Token Accounts: ${tokenCount}
+Recent Transactions: ${signatures.length}`);
+      
+    } catch (err: any) {
+      setWalletError(err.message || "Failed to fetch wallet data");
+    } finally {
+      setLoadingWallet(false);
+    }
+  }, []);
 
   // Animation loop
   useEffect(() => {
@@ -300,34 +371,26 @@ export function FuturisticWalletTracker() {
 
     drawGrid(ctx, width, height);
     
-    if (showTrails) {
-      drawParticles(ctx, width, height);
-    }
-
-    if (showConnections) {
-      drawConnections(ctx, width, height);
-    }
-
+    if (showTrails) drawParticles(ctx, width, height);
+    if (showConnections) drawConnections(ctx, width, height);
     drawWallets(ctx, width, height);
 
-    if (hoveredWallet) {
-      drawTooltip(ctx, hoveredWallet, width, height);
-    }
+    if (hoveredWallet) drawTooltip(ctx, hoveredWallet, width, height);
   }, [showTrails, showConnections]);
 
   const drawGrid = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     ctx.strokeStyle = "#0a0f2a";
     ctx.lineWidth = 0.5;
     const gridSize = 80;
-    const offsetX = (cameraPosition.x % 80) * 0.5;
-    const offsetY = (cameraPosition.y % 80) * 0.5;
+    const offsetX = (cameraPosition.x % gridSize) * 0.5;
+    const offsetY = (cameraPosition.y % gridSize) * 0.5;
     
     ctx.beginPath();
-    for (let x = -offsetX; x < width; x += 80) {
+    for (let x = -offsetX; x < width; x += gridSize) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, height);
     }
-    for (let y = -offsetY; y < height; y += 80) {
+    for (let y = -offsetY; y < height; y += gridSize) {
       ctx.moveTo(0, y);
       ctx.lineTo(width, y);
     }
@@ -336,10 +399,9 @@ export function FuturisticWalletTracker() {
 
   const drawParticles = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const newParticles: Array<{x: number, y: number, z: number, vx: number, vy: number, vz: number, life: number, color: string}> = [];
-    
     const wallets = INITIAL_WALLETS;
     
-    wallets.forEach((wallet: any) => {
+    wallets.forEach((wallet) => {
       if (wallet.txCount > 10 && Math.random() < 0.02 * animationSpeed) {
         const angle = Math.random() * Math.PI * 2;
         const speed = 2 + Math.random() * 3;
@@ -378,8 +440,6 @@ export function FuturisticWalletTracker() {
   const drawConnections = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const centerX = width / 2 + cameraPosition.x * 0.1;
     const centerY = height / 2 + cameraPosition.y * 0.1;
-    
-    const wallets = INITIAL_WALLETS;
     
     CONNECTIONS.forEach(conn => {
       const fromWallet = INITIAL_WALLETS.find(w => w.address === conn.from);
@@ -420,9 +480,7 @@ export function FuturisticWalletTracker() {
     const centerX = width / 2 + cameraPosition.x * 0.1;
     const centerY = height / 2 + cameraPosition.y * 0.1;
     
-    const wallets = INITIAL_WALLETS;
-    
-    wallets.forEach((wallet: any) => {
+    INITIAL_WALLETS.forEach((wallet) => {
       if (showInsidersOnly && !wallet.isInsider) return;
       
       const x = centerX + wallet.x;
@@ -561,7 +619,7 @@ export function FuturisticWalletTracker() {
     let found = null;
     let minDist = 50;
     
-    INITIAL_WALLETS.forEach((wallet: any) => {
+    INITIAL_WALLETS.forEach((wallet) => {
       if (showInsidersOnly && !wallet.isInsider) return;
       const wx = centerX + wallet.x;
       const wy = centerY + wallet.y;
@@ -582,7 +640,7 @@ export function FuturisticWalletTracker() {
     const centerX = rect.width / 2 + cameraPosition.x * 0.1;
     const centerY = rect.height / 2 + cameraPosition.y * 0.1;
     
-    INITIAL_WALLETS.forEach((wallet: any) => {
+    INITIAL_WALLETS.forEach((wallet) => {
       if (showInsidersOnly && !wallet.isInsider) return;
       const wx = centerX + wallet.x;
       const wy = centerY + wallet.y;
@@ -663,7 +721,7 @@ export function FuturisticWalletTracker() {
             
             <select 
               value={timeRange} 
-              onChange={(e) => setTimeRange(e.target.value)}
+              onChange={(e) => setTimeRange(e.target.value as "1h" | "24h" | "7d")}
               className="px-3 py-1.5 rounded-xl border border-white/10 bg-white/5 text-white text-sm focus:outline-none focus:border-solana-purple"
             >
               <option value="1h">1 Hour</option>
@@ -685,6 +743,41 @@ export function FuturisticWalletTracker() {
           </div>
         </div>
       </header>
+
+      {/* Wallet Address Input Bar */}
+      <div className="fixed top-16 left-0 right-0 z-30 bg-[#050515]/95 backdrop-blur-sm border-b border-white/10 px-4 py-3" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div className="max-w-4xl mx-auto flex items-center gap-3">
+          <label className="text-white/60 text-sm font-medium whitespace-nowrap">Track Wallet:</label>
+          <input
+            type="text"
+            value={walletInput}
+            onChange={(e) => setWalletInput(e.target.value)}
+            placeholder="Enter Solana wallet address (e.g., 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM)"
+            className="flex-1 px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-solana-purple text-base font-mono"
+            maxLength={44}
+          />
+          <button
+            onClick={handleTrackWallet}
+            disabled={!walletInput.trim() || loadingWallet}
+            className="px-6 py-3 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          >
+            {loadingWallet ? (
+              <>
+                <svg className="animate-spin w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Tracking...
+              </>
+            ) : (
+              'Track Wallet'
+            )}
+          </button>
+          {walletError && (
+            <span className="text-risk-critical text-sm ml-2">{walletError}</span>
+          )}
+        </div>
+      </div>
 
       {/* Main Map */}
       <main className="pt-16 h-screen overflow-hidden">
@@ -828,7 +921,7 @@ export function FuturisticWalletTracker() {
                         
                         <div className="space-y-2 text-sm text-white/60">
                           <p><strong>Reasons:</strong> {insider.reasons.join(", ")}</p>
-                          <p><strong>Known associates:</strong> {insider.knownAddresses.map((a: string) => truncateAddr(a)).join(", ")}</p>
+                          <p><strong>Known associates:</strong> {insider.knownAddresses.map(a => truncateAddr(a)).join(", ")}</p>
                         </div>
                         
                         <div className="mt-3 pt-3 border-t border-red-500/20">
@@ -947,10 +1040,10 @@ export function FuturisticWalletTracker() {
       <footer className="fixed bottom-0 left-0 right-0 z-40 bg-[#050515]/95 backdrop-blur-sm border-t border-white/10">
         <div className="max-w-full mx-auto px-4 py-3">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
-            <div><p className="text-xs text-white/50 uppercase tracking-wider">TOTAL VOLUME</p><p className="font-mono text-lg font-semibold text-white">{formatNumber(INITIAL_WALLETS.reduce((sum, w) => sum + w.volume24h, 0))}</p></div>
-            <div><p className="text-xs text-white/50 uppercase tracking-wider">INSIDERS</p><p className="font-mono text-lg font-semibold text-red-500">{INITIAL_WALLETS.filter(w => w.isInsider).length}</p></div>
-            <div><p className="text-xs text-white/50 uppercase tracking-wider">WHALES</p><p className="font-mono text-lg font-semibold text-blue-500">{INITIAL_WALLETS.filter(w => w.type === "whale").length}</p></div>
-            <div><p className="text-xs text-white/50 uppercase tracking-wider">AVG RISK</p><p className="font-mono text-lg font-semibold text-yellow-500">{Math.round(INITIAL_WALLETS.reduce((sum, w) => sum + w.riskScore, 0) / INITIAL_WALLETS.length)}/100</p></div>
+            <div><p className="text-xs text-white/50 uppercase tracking-wider">TOTAL VOLUME</p><p className="font-mono text-lg font-semibold text-white">{formatNumber(totalVolume)}</p></div>
+            <div><p className="text-xs text-white/50 uppercase tracking-wider">INSIDERS</p><p className="font-mono text-lg font-semibold text-red-500">{insiderCount}</p></div>
+            <div><p className="text-xs text-white/50 uppercase tracking-wider">WHALES</p><p className="font-mono text-lg font-semibold text-blue-500">{whaleCount}</p></div>
+            <div><p className="text-xs text-white/50 uppercase tracking-wider">AVG RISK</p><p className="font-mono text-lg font-semibold text-yellow-500">{avgRisk.toFixed(0)}/100</p></div>
             <div><p className="text-xs text-white/50 uppercase tracking-wider">WALLETS</p><p className="font-mono text-lg font-semibold text-green-500">{INITIAL_WALLETS.length}</p></div>
             <div><p className="text-xs text-white/50 uppercase tracking-wider">FLOWS</p><p className="font-mono text-lg font-semibold text-purple-500">{CONNECTIONS.length}</p></div>
           </div>
