@@ -1,9 +1,9 @@
 import { Metadata } from "next";
-import { FuturisticWalletTracker } from "@/components/FuturisticWalletTracker";
+import { WalletTracker } from "@/components/WalletTracker";
 
 export const metadata: Metadata = {
   title: "Solcurity - Solana Wallet Intelligence & Security",
-  description: "Real-time wallet tracking, insider detection, PumpFun analytics, and on-chain security scanning",
+  description: "Read-only Solana wallet activity monitoring and on-chain security tools",
 };
 
 export default function HomePage() {
@@ -17,7 +17,7 @@ export default function HomePage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-20 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-solana-purple/20 bg-solana-purple/5 px-4 py-1.5 mb-6">
             <span className="h-2 w-2 rounded-full animate-pulse bg-solana-purple" />
-            <span className="text-xs font-medium uppercase tracking-[0.18em] text-solana-purple">Live On-Chain Intelligence</span>
+            <span className="text-xs font-medium uppercase tracking-[0.18em] text-solana-purple">Read-only On-Chain Data</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold leading-[1.02] tracking-tight mb-6">
@@ -28,8 +28,8 @@ export default function HomePage() {
           </h1>
           
           <p className="text-lg md:text-xl text-white/60 max-w-3xl mx-auto mb-10 leading-relaxed">
-            Real-time wallet tracking, insider detection, PumpFun analytics, and automated security scanning.
-            Monitor whale movements, identify coordinated clusters, and scan any wallet for risks.
+            Monitor public Solana wallet activity and explore on-chain security tools.
+            Enter an address to view its confirmed balance changes and recent transactions.
           </p>
           
           <div className="flex flex-wrap items-center justify-center gap-4">
@@ -38,13 +38,6 @@ export default function HomePage() {
             </a>
           </div>
           
-          {/* Live Stats Preview */}
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-            <StatPreview label="WALLETS TRACKED" value="150K+" color="text-solana-blue" />
-            <StatPreview label="INSIDERS DETECTED" value="2,847" color="text-red-500" />
-            <StatPreview label="24H VOLUME" value="$2.4B+" color="text-solana-green" />
-            <StatPreview label="SCANS COMPLETED" value="89,234" color="text-solana-purple" />
-          </div>
         </div>
       </header>
 
@@ -55,11 +48,11 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto">
             <div className="mb-10 text-center">
               <h2 className="text-3xl md:text-4xl font-bold mb-3">Fly Map Wallet Tracker</h2>
-              <p className="text-white/60 max-w-2xl mx-auto">Real-time 3D visualization of wallet movements, insider clusters, and transaction flows with insider detection</p>
+              <p className="text-white/60 max-w-2xl mx-auto">Follow confirmed balance changes and transaction activity for a public Solana address.</p>
             </div>
             
-            <div className="bg-[#050515]/50 border border-white/10 rounded-2xl overflow-hidden" style={{ height: "70vh" }}>
-              <FuturisticWalletTracker />
+            <div className="bg-[#050515]/50 border border-white/10 rounded-2xl">
+              <WalletTracker />
             </div>
           </div>
         </section>
@@ -130,15 +123,6 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function StatPreview({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center">
-      <p className={`font-mono text-3xl md:text-4xl font-bold ${color}`}>{value}</p>
-      <p className="mt-2 text-xs text-white/50 uppercase tracking-wider">{label}</p>
     </div>
   );
 }

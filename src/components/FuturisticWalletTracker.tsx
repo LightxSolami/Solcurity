@@ -47,35 +47,49 @@ interface InsiderPattern {
 }
 
 // Constants
+const BASE_TIMESTAMP = 1700000000000; // Fixed base timestamp for deterministic hydration
+
 const INITIAL_WALLETS: WalletNode[] = [
-  { address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", label: "Whale #1", x: 0, y: 0, z: 0, type: "whale", balance: 12500, volume24h: 45000, txCount: 127, isInsider: false, connections: [], lastActive: Date.now(), riskScore: 15 },
-  { address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", label: "Insider Cluster A", x: 150, y: 100, z: 50, type: "insider", balance: 8500, volume24h: 120000, txCount: 342, isInsider: true, connections: [], lastActive: Date.now() - 1000 * 60 * 5, riskScore: 95 },
-  { address: "3vQB7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJos", label: "Exchange Hot Wallet", x: -200, y: -150, z: -20, type: "exchange", balance: 850000, volume24h: 2500000, txCount: 15420, isInsider: false, connections: [], lastActive: Date.now() - 1000 * 60 * 1, riskScore: 10 },
-  { address: "8sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS", label: "Sniper Bot", x: 80, y: -120, z: 30, type: "insider", balance: 3200, volume24h: 85000, txCount: 567, isInsider: true, connections: [], lastActive: Date.now() - 1000 * 60 * 2, riskScore: 88 },
-  { address: "4fG7hJ2kL5mN8pQ1rS4fG7hJ2kL5mN8pQ1rS4fG7h", label: "Whale #2", x: -180, y: 200, z: -10, type: "whale", balance: 45000, volume24h: 180000, txCount: 89, isInsider: false, connections: [], lastActive: Date.now() - 1000 * 60 * 15, riskScore: 22 },
-  { address: "9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", label: "Insider Cluster B", x: -50, y: 180, z: 80, type: "insider", balance: 12000, volume24h: 220000, txCount: 567, isInsider: true, connections: [], lastActive: Date.now() - 1000 * 60 * 3, riskScore: 92 },
-  { address: "2vQB7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJos", label: "New Token Creator", x: 220, y: -80, z: 40, type: "new", balance: 500, volume24h: 12000, txCount: 45, isInsider: true, connections: [], lastActive: Date.now() - 1000 * 60 * 10, riskScore: 75 },
-  { address: "6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS", label: "MEV Bot", x: 30, y: 30, z: 100, type: "insider", balance: 8000, volume24h: 340000, txCount: 1234, isInsider: true, connections: [], lastActive: Date.now() - 1000 * 60 * 1, riskScore: 90 },
+  { address: "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM", label: "Whale #1", x: 0, y: 0, z: 0, type: "whale", balance: 12500, volume24h: 45000, txCount: 127, isInsider: false, connections: [], lastActive: BASE_TIMESTAMP, riskScore: 15 },
+  { address: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", label: "Insider Cluster A", x: 150, y: 100, z: 50, type: "insider", balance: 8500, volume24h: 120000, txCount: 342, isInsider: true, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 5, riskScore: 95 },
+  { address: "3vQB7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJos", label: "Exchange Hot Wallet", x: -200, y: -150, z: -20, type: "exchange", balance: 850000, volume24h: 2500000, txCount: 15420, isInsider: false, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 1, riskScore: 10 },
+  { address: "8sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS", label: "Sniper Bot", x: 80, y: -120, z: 30, type: "insider", balance: 3200, volume24h: 85000, txCount: 567, isInsider: true, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 2, riskScore: 88 },
+  { address: "4fG7hJ2kL5mN8pQ1rS4fG7hJ2kL5mN8pQ1rS4fG7h", label: "Whale #2", x: -180, y: 200, z: -10, type: "whale", balance: 45000, volume24h: 180000, txCount: 89, isInsider: false, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 15, riskScore: 22 },
+  { address: "9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", label: "Insider Cluster B", x: -50, y: 180, z: 80, type: "insider", balance: 12000, volume24h: 220000, txCount: 567, isInsider: true, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 3, riskScore: 92 },
+  { address: "2vQB7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJos", label: "New Token Creator", x: 220, y: -80, z: 40, type: "new", balance: 500, volume24h: 12000, txCount: 45, isInsider: true, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 10, riskScore: 75 },
+  { address: "6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS", label: "MEV Bot", x: 30, y: 30, z: 100, type: "insider", balance: 8000, volume24h: 340000, txCount: 1234, isInsider: true, connections: [], lastActive: BASE_TIMESTAMP - 1000 * 60 * 1, riskScore: 90 },
 ];
 
 const TOKEN_SYMBOLS = ["SOL", "USDC", "USDT", "BONK", "WIF", "JUP", "PYTH", "JTO", "RENDER", "ORCA", "RAY", "MNGO"];
 
+// Seeded PRNG for deterministic generation
+function createSeededRandom(seed: number) {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6D2B79F5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61)) | 0;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
 function generateConnections() {
   const connections: any[] = [];
   const addresses = INITIAL_WALLETS.map(w => w.address);
+  const random = createSeededRandom(0x12345678); // Fixed seed for deterministic generation
   
   for (let i = 0; i < 50; i++) {
-    const from = addresses[Math.floor(Math.random() * addresses.length)];
-    const to = addresses[Math.floor(Math.random() * addresses.length)];
+    const from = addresses[Math.floor(random() * addresses.length)];
+    const to = addresses[Math.floor(random() * addresses.length)];
     if (from === to) continue;
     
     connections.push({
       from,
       to,
-      amount: Math.random() * 10000 + 100,
-      token: TOKEN_SYMBOLS[Math.floor(Math.random() * TOKEN_SYMBOLS.length)],
-      timestamp: Date.now() - Math.random() * 1000 * 60 * 60 * 24,
-      type: (Math.random() > 0.5 ? "buy" : Math.random() > 0.5 ? "sell" : "transfer") as "buy" | "sell" | "transfer",
+      amount: random() * 10000 + 100,
+      token: TOKEN_SYMBOLS[Math.floor(random() * TOKEN_SYMBOLS.length)],
+      timestamp: Date.now() - Math.floor(random() * 1000 * 60 * 60 * 24),
+      type: (random() > 0.5 ? "buy" : random() > 0.5 ? "sell" : "transfer") as "buy" | "sell" | "transfer",
     });
   }
   return connections;
@@ -90,8 +104,8 @@ const INSIDERS = [
     reasons: ["Coordinated buying with Cluster B", "Sniping new tokens within 1 block", "Shared funding source detected"],
     knownAddresses: ["9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", "8sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"],
     patterns: [
-      { type: "coordinated_buy", timestamp: Date.now() - 1000 * 60 * 60 * 2, wallets: ["7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", "9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"], token: "BONK", profit: 45000 },
-      { type: "sniping", timestamp: Date.now() - 1000 * 60 * 30, wallets: ["7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"], token: "WIF" },
+      { type: "coordinated_buy", timestamp: 1700000000000, wallets: ["7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU", "9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"], token: "BONK", profit: 45000 },
+      { type: "sniping", timestamp: 1700000000000, wallets: ["7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"], token: "WIF" },
     ]
   },
   {
@@ -100,7 +114,7 @@ const INSIDERS = [
     reasons: ["Sniping new token launches", "Consistently first buyer", "High win rate on new tokens"],
     knownAddresses: ["7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU"],
     patterns: [
-      { type: "sniping", timestamp: Date.now() - 1000 * 60 * 15, wallets: ["8sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "NEW_TOKEN" },
+      { type: "sniping", timestamp: 1700000000000, wallets: ["8sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "NEW_TOKEN" },
     ]
   },
   {
@@ -109,8 +123,8 @@ const INSIDERS = [
     reasons: ["MEV extraction detected", "Front-running large orders", "Gas optimization patterns"],
     knownAddresses: [],
     patterns: [
-      { type: "front_running", timestamp: Date.now() - 1000 * 60 * 5, wallets: ["6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "SOL" },
-      { type: "wash_trading", timestamp: Date.now() - 1000 * 60 * 60, wallets: ["6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "RAY" },
+      { type: "front_running", timestamp: 1700000000000, wallets: ["6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "SOL" },
+      { type: "wash_trading", timestamp: 1700000000000, wallets: ["6sP2qR5mN9vX4wY7zA1bC3dE6fG9hJ2kL5mN8pQ1rS"], token: "RAY" },
     ]
   },
 ];
