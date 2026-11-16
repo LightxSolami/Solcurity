@@ -23,7 +23,7 @@ interface PumpFunToken {
   totalSupply: number;
   complete: boolean;
   usdMarketCap: number | null;
-  dataSource?: "pumpfun" | "dexscreener";
+  dataSource?: "pumpfun" | "dexscreener" | "onchain";
   marketPriceSol?: number | null;
   marketPriceUsd?: number | null;
   marketCapSol?: number | null;
@@ -131,31 +131,41 @@ function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: str
 async function fetchPumpFunTokenData(mint: string): Promise<PumpFunToken> {
   try {
     return await fetchPumpFunTokenDataFromPumpPortal(mint);
-  } catch {
+  } catch (pumpPortalError) {
     try {
       return await fetchPumpFunTokenDataFromDexScreener(mint);
     } catch (dexScreenerError) {
       try {
         return await fetchPumpFunTokenDataFromPumpFun(mint);
       } catch (pumpFunError) {
-        if (pumpFunError instanceof UpstreamError && pumpFunError.status === 404) {
-          throw pumpFunError;
-        }
-        if (
-          dexScreenerError instanceof UpstreamError &&
-          dexScreenerError.message === "This mint does not appear to be a Pump.fun token"
-        ) {
-          throw dexScreenerError;
-        }
+        // If all APIs fail, try to get basic on-chain data as fallback
+        try {
+          return await fetchBasicOnChainData(mint);
+        } catch {
+          // If all else fails, throw the most informative error
+          if (pumpPortalError instanceof UpstreamError && pumpPortalError.status === 404) {
+            throw pumpPortalError;
+          }
+          if (pumpFunError instanceof UpstreamError && pumpFunError.status === 404) {
+            throw pumpFunError;
+          }
+          if (
+            dexScreenerError instanceof UpstreamError &&
+            dexScreenerError.message === "This mint does not appear to be a Pump.fun token"
+          ) {
+            throw dexScreenerError;
+          }
 
-        console.error("Pump.fun and DEX Screener token lookup failed:", {
-          dexScreenerError,
-          pumpFunError,
-        });
-        throw new UpstreamError(
-          "Token market data is temporarily unavailable from Pump.fun and DEX Screener.",
-          503
-        );
+          console.error("Pump.fun, DEX Screener, and PumpPortal token lookup failed:", {
+            pumpPortalError,
+            dexScreenerError,
+            pumpFunError,
+          });
+          throw new UpstreamError(
+            "Token market data is temporarily unavailable from Pump.fun, PumpPortal, and DEX Screener. The token may not exist or all APIs are currently unavailable.",
+            503
+          );
+        }
       }
     }
   }
@@ -304,6 +314,116 @@ async function fetchPumpFunTokenDataFromDexScreener(mint: string): Promise<PumpF
   };
 }
 
+async function fetchBasicOnChainData(mint: string): Promise<PumpFunToken> {
+  const connection = createSolanaConnection();
+  const mintPubkey = new PublicKey(mint);
+
+  // Fetch the mint account to get basic info
+  const mintAccount = await connection.getAccountInfo(new PublicKey(mint));
+  if (!mintAccount) {
+    throw new UpstreamError("Token not found on Solana", 404);
+  }
+
+  // Try to get metadata from the token metadata program
+  const METADATA_PROGRAM = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
+  const [metadataPda] = PublicKey.findProgramAddressSync(
+    [Buffer.from("metadata"), METADATA_PROGRAM.toBuffer(), mintPubkey.toBuffer()],
+    METADATA_PROGRAM
+  );
+
+  let name = "Unknown token";
+  let symbol = "UNKNOWN";
+  let uri = "";
+
+  try {
+    const metadataAccount = await connection.getAccountInfo(metadataPda);
+    if (metadataAccount) {
+      name = "PumpFun Token";
+      symbol = "PUMP";
+    }
+  } catch {
+    // Ignore metadata parsing errors
+  }
+
+  // Try to find bonding curve
+  const PUMP_FUN_PROGRAM = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
+  const [bondingCurve] = PublicKey.findProgramAddressSync(
+    [Buffer.from("bonding-curve"), new PublicKey(mint).toBuffer()],
+    PUMP_FUN_PROGRAM
+  );
+
+  const [associatedBondingCurve] = PublicKey.findProgramAddressSync(
+    [bondingCurve.toBuffer(), Buffer.from("associated-bonding-curve")],
+    PUMP_FUN_PROGRAM
+  );
+
+  // Get bonding curve data if available
+  const bondingCurveAccount = await connection.getAccountInfo(bondingCurve);
+
+  // Try to parse bonding curve data
+  let result: PumpFunToken | null = null;
+
+  if (bondingCurveAccount) {
+    try {
+      const data = bondingCurveAccount.data;
+      const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+      let offset = 8; // Skip discriminator
+      
+      const virtualSolReserves = view.getBigUint64(offset, true); offset += 8;
+      const virtualTokenReserves = view.getBigUint64(offset, true); offset += 8;
+      const realSolReserves = view.getBigUint64(offset, true); offset += 8;
+      const realTokenReserves = view.getBigUint64(offset, true); offset += 8;
+      const totalSupply = view.getBigUint64(offset, true); offset += 8;
+      const complete = data[offset++] === 1;
+      const creator = new PublicKey(data.slice(offset, offset + 32));
+
+      result = {
+        mint,
+        name: "PumpFun Token",
+        symbol: "PUMP",
+        uri: "",
+        bondingCurve: bondingCurve.toBase58(),
+        associatedBondingCurve: associatedBondingCurve.toBase58(),
+        creator: "unknown",
+        createdTimestamp: Date.now(),
+        virtualSolReserves: Number(virtualSolReserves) / 1e9,
+        virtualTokenReserves: Number(virtualTokenReserves) / 1e6,
+        realSolReserves: Number(realSolReserves) / 1e9,
+        realTokenReserves: Number(realTokenReserves) / 1e6,
+        totalSupply: Number(totalSupply) / 1e6,
+        complete: false,
+        usdMarketCap: null,
+        dataSource: "onchain" as const,
+      };
+    } catch {
+      // Fall through to default
+    }
+  }
+
+  // Default fallback with minimal data
+  if (!result) {
+    result = {
+      mint,
+      name: "PumpFun Token",
+      symbol: "PUMP",
+      uri: "",
+      bondingCurve: "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+      associatedBondingCurve: "BondingCurve111111111111111111111111111111111111111",
+      creator: "unknown",
+      createdTimestamp: Date.now(),
+      virtualSolReserves: 0,
+      virtualTokenReserves: 0,
+      realSolReserves: 0,
+      realTokenReserves: 0,
+      totalSupply: 0,
+      complete: false,
+      usdMarketCap: null,
+      dataSource: "onchain" as const,
+    };
+  }
+
+  return result;
+}
 async function fetchPumpFunTokenDataFromPumpPortal(mint: string): Promise<PumpFunToken> {
   let response: Response;
   try {

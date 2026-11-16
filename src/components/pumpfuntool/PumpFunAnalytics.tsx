@@ -29,7 +29,7 @@ interface Analytics {
     createdTimestamp: number;
     totalSupply: number;
     complete: boolean;
-    dataSource?: "pumpfun" | "dexscreener";
+    dataSource?: "pumpfun" | "dexscreener" | "onchain";
     dexId?: string;
     marketUrl?: string;
   };
@@ -186,6 +186,11 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
         {token.dataSource === "dexscreener" && (
           <p className="mt-4 text-sm text-white/60" role="note">
             Market pricing is supplied by DEX Screener because Pump.fun&apos;s API is unavailable. Bonding-curve and trade data are shown only when provided by their source.
+          </p>
+        )}
+        {token.dataSource === "onchain" && (
+          <p className="mt-4 text-sm text-yellow-400" role="note">
+            ⚠️ Data sourced directly from Solana blockchain. Pump.fun and DEX Screener APIs are currently unavailable. Some data (bonding curve, trade history, holder details) may be limited or estimated.
           </p>
         )}
       </section>

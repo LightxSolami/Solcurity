@@ -1,23 +1,11 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL, type GetProgramAccountsConfig, type TokenAccountBalancePair } from "@solana/web3.js";
 
-// Multiple free RPC endpoints to try in order
+// Use the configured endpoint first, then public mainnet endpoints that support Solana JSON-RPC.
 const FREE_RPC_ENDPOINTS = [
   process.env.SOLANARPCURL,
-  // Primary reliable free endpoints
-  "https://solana-mainnet.g.alchemy.com/v2/demo",
-  "https://rpc.ankr.com/solana",
-  "https://solana.drpc.org",
-  // Additional free endpoints
-  "https://api.mainnet-beta.solana.com",
-  "https://solana-mainnet.rpc.extrnode.com",
-  "https://rpc.helius.xyz/?api-key=helius-free",
   "https://solana-rpc.publicnode.com",
-  "https://mainnet.helius-rpc.com",
-  "https://rpc.tron.network/solana",
-  "https://solana-mainnet.chainstacklabs.com",
-  "https://rpc.lokijs.com/solana",
-  "https://solana.api.syndica.io/api-key/free/solana-mainnet",
-].filter(Boolean) as string[];
+  "https://api.mainnet-beta.solana.com",
+].filter((url): url is string => Boolean(url));
 
 let currentRpcIndex = 0;
 
@@ -61,21 +49,17 @@ export async function withRpcRetry<T>(
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
       
-      // Check if it's a rate limit or 403 error
-      const isRateLimited = lastError.message.includes("429") || 
-                           lastError.message.includes("403") || 
-                           lastError.message.includes("rate limit") ||
-                           lastError.message.includes("Too Many Requests");
-      
-      if (isRateLimited && attempt < maxRetries) {
-        // Rotate to next RPC endpoint
+      if (attempt < maxRetries) {
         rotateRpcEndpoint();
-        // Wait a bit before retrying
-        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
-        continue;
+        const isRateLimited =
+          lastError.message.includes("429") ||
+          lastError.message.includes("403") ||
+          lastError.message.toLowerCase().includes("rate limit") ||
+          lastError.message.includes("Too Many Requests");
+        if (isRateLimited) {
+          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+        }
       }
-      
-      if (attempt === maxRetries) break;
     }
   }
 
