@@ -18,6 +18,8 @@ export async function analyzeTransactions(
   const transactions: TransactionInfo[] = [];
   const limited = signatures.slice(0, maxTransactions);
 
+  console.log(`Analyzing ${limited.length} transactions for ${address}`);
+
   // Fetch transaction details in batches to avoid rate limits.
   const batchSize = 10;
   for (let i = 0; i < limited.length; i += batchSize) {
@@ -31,9 +33,13 @@ export async function analyzeTransactions(
         const tx = result.value;
         const sigInfo = batch[idx];
         transactions.push(parseTransaction(tx, sigInfo, address));
+      } else if (result.status === "rejected") {
+        console.warn(`Failed to fetch transaction ${batch[idx].signature}:`, result.reason);
       }
     });
   }
+
+  console.log(`Successfully parsed ${transactions.length} transactions out of ${limited.length}`);
 
   // Flag any transaction interacting with a known-malicious address.
   for (const tx of transactions) {

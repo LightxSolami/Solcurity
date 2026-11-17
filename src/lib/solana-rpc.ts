@@ -3,8 +3,14 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL, type GetProgramAccountsConfig,
 // Use the configured endpoint first, then public mainnet endpoints that support Solana JSON-RPC.
 const FREE_RPC_ENDPOINTS = [
   process.env.SOLANARPCURL,
-  "https://solana-rpc.publicnode.com",
+  "https://solana-mainnet.g.alchemy.com/v2/demo",
+  "https://rpc.ankr.com/solana",
+  "https://solana.drpc.org",
+  "https://solana-mainnet.g.alchemy.com/v2/demo",
+  "https://rpc.ankr.com/solana",
+  "https://solana.drpc.org",
   "https://api.mainnet-beta.solana.com",
+  "https://solana-mainnet.g.alchemy.com/v2/demo",
 ].filter((url): url is string => Boolean(url));
 
 let currentRpcIndex = 0;

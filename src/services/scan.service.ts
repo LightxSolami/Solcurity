@@ -50,8 +50,10 @@ export async function runScan(address: string, rpcUrl?: string): Promise<ScanRes
       return await analyzeTransactions(conn, address, signatures);
     });
     transactions = result.transactions;
+    console.log(`Analyzed ${transactions.length} transactions for ${address}`);
     allFailedChecks.push(...result.failedChecks);
   } catch (err) {
+    console.error(`Transaction analysis failed for ${address}:`, err);
     allFailedChecks.push("transaction_analysis_failed");
   }
 

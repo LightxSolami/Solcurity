@@ -46,6 +46,7 @@ interface Analytics {
     top20Percentage: number;
     available: boolean;
     holders: Holder[];
+    error?: string;
   };
   liquidity: { sol: number; tokens: number };
   recentTrades: Trade[];
@@ -185,12 +186,12 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
         </div>
         {token.dataSource === "dexscreener" && (
           <p className="mt-4 text-sm text-white/60" role="note">
-            Market pricing is supplied by DEX Screener because Pump.fun&apos;s API is unavailable. Bonding-curve and trade data are shown only when provided by their source.
+            DEX Screener supplies market pricing. Holder balances, bonding-curve state, and recent swaps are queried from Solana mainnet.
           </p>
         )}
         {token.dataSource === "onchain" && (
           <p className="mt-4 text-sm text-yellow-400" role="note">
-            ⚠️ Data sourced directly from Solana blockchain. Pump.fun and DEX Screener APIs are currently unavailable. Some data (bonding curve, trade history, holder details) may be limited or estimated.
+            Token data was read from Solana mainnet. Market pricing and token metadata may be unavailable when market-data providers do not return this mint.
           </p>
         )}
       </section>
@@ -240,7 +241,9 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
           {activeTab === "holders" && (
             !holders.available ? (
-              <p className="text-white/60">Holder data is unavailable from the selected RPC endpoint.</p>
+              <p className="text-white/60" role="status">
+                Holder lookup failed: {holders.error ?? "The RPC endpoint did not return token account data."}
+              </p>
             ) : holders.holders.length === 0 ? (
               <p className="text-white/60">No token accounts with a positive balance were returned.</p>
             ) : (
@@ -263,7 +266,9 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
           {activeTab === "trades" && (
             recentTrades.length === 0 ? (
-              <p className="text-white/60">Recent individual trades are not available from the current market-data provider.</p>
+              <p className="text-white/60" role="status">
+                No recent swaps for this mint were found in the accessible Solana transaction history.
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -285,7 +290,11 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
           {activeTab === "curve" && (
             !bondingCurve.available ? (
-              <p className="text-white/60">Bonding-curve reserves are not provided by the market-data fallback.</p>
+              <p className="text-white/60" role="status">
+                {token.complete
+                  ? "This token has graduated from its bonding curve. The liquidity metric shows its current market pool."
+                  : "No active Pump.fun bonding-curve account was found for this mint. It may have graduated or may not be a Pump.fun token."}
+              </p>
             ) : (
               <div className="space-y-4">
                 <div className="flex justify-between text-sm text-white/70"><span>Progress</span><span>{bondingCurve.progress?.toFixed(1)}%</span></div>

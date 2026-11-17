@@ -48,6 +48,7 @@ export async function analyzeWallet(
   // 2. Signatures (history) — used for tx count and first/last activity
   try {
     signatures = await getSignaturesForAddress(connection, pubkey, 1000);
+    console.log(`Fetched ${signatures.length} signatures for ${address}`);
     wallet.transactionCount = signatures.length;
 
     if (signatures.length > 0) {
@@ -64,6 +65,7 @@ export async function analyzeWallet(
       }
     }
   } catch (err) {
+    console.warn(`Failed to fetch signatures for ${address}:`, err);
     failedChecks.push("transaction_history");
   }
 
