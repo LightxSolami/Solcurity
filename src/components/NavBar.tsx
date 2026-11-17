@@ -11,6 +11,7 @@ const navItems = [
   { href: "/scanner", label: "Scanner" },
   { href: "/svm", label: "SVM Explorer" },
   { href: "/tools", label: "Tools" },
+  { href: "/games", label: "Games" },
 ];
 
 export function NavBar() {

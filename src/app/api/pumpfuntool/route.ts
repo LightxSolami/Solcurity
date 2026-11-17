@@ -116,11 +116,12 @@ function getRecord(value: unknown): Record<string, unknown> | null {
 
 function withTrackerRpc<T>(
   operation: (connection: Connection) => Promise<T>,
-  rpcUrl?: string
+  rpcUrl?: string,
+  maxRetries = 3
 ): Promise<T> {
   return rpcUrl
     ? operation(createSolanaConnection(rpcUrl))
-    : withRpcRetry(operation);
+    : withRpcRetry(operation, maxRetries);
 }
 
 function getBondingCurveAddress(mint: PublicKey): PublicKey {
@@ -785,16 +786,17 @@ async function fetchRecentTradesFromChain(
     .slice(0, 60);
   const trades: RecentTrade[] = [];
 
-  for (let offset = 0; offset < signatures.length && trades.length < limit; offset += 20) {
-    const batch = signatures.slice(offset, offset + 20);
+  for (let offset = 0; offset < signatures.length && trades.length < limit; offset += 3) {
+    const batch = signatures.slice(offset, offset + 3);
     let transactions;
     try {
       transactions = await withTrackerRpc(
         (connection) => connection.getParsedTransactions(
           batch.map((entry) => entry.signature),
-          { commitment: "confirmed", maxSupportedTransactionVersion: 0 }
+          { commitment: "confirmed", maxSupportedTransactionVersion: 1 }
         ),
-        rpcUrl
+        rpcUrl,
+        1
       );
     } catch (error) {
       console.warn("PumpFun transaction details unavailable:", error);

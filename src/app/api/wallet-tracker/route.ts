@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { Connection, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import { z } from "zod";
 import { withRpcRetry } from "@/lib/solana-rpc";
 import { SolanaAddressSchema } from "@/lib/validators";
 import { getClientIp, RateLimiter } from "@/lib/rate-limit";
 
 const trackerRateLimiter = new RateLimiter(120, 15 * 60 * 1000);
+const TRANSACTION_DETAIL_LIMIT = 6;
 
 const SignatureSchema = z
   .string()
@@ -62,19 +63,26 @@ export async function GET(request: NextRequest) {
     );
 
     const page = signatures.slice(0, limit);
-    const transactions = page.length
-      ? await withRpcRetry(
+    const transactions: Awaited<ReturnType<Connection["getParsedTransactions"]>> =
+      page.map(() => null);
+    for (let offset = 0; offset < Math.min(page.length, TRANSACTION_DETAIL_LIMIT); offset += 3) {
+      const batch = page.slice(offset, offset + 3);
+      try {
+        const batchTransactions = await withRpcRetry(
           (connection) =>
             connection.getParsedTransactions(
-              page.map((signatureInfo) => signatureInfo.signature),
-              { commitment: "confirmed", maxSupportedTransactionVersion: 0 }
+              batch.map((signatureInfo) => signatureInfo.signature),
+              { commitment: "confirmed", maxSupportedTransactionVersion: 1 }
             ),
-          2
-        ).catch((error: unknown) => {
-          console.warn("Wallet tracker transaction details unavailable:", error);
-          return page.map(() => null);
-        })
-      : [];
+          1
+        );
+        batch.forEach((_, index) => {
+          transactions[offset + index] = batchTransactions[index] ?? null;
+        });
+      } catch (error) {
+        console.warn("Wallet tracker transaction details unavailable for batch:", error);
+      }
+    }
 
     const detailsAvailable =
       page.length === 0 || transactions.every((transaction) => transaction !== null);

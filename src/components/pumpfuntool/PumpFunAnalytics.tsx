@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { PumpFunTradeFlowMap } from "@/components/pumpfuntool/PumpFunTradeFlowMap";
 
 interface Holder {
   address: string;
@@ -58,7 +59,7 @@ interface PumpFunAnalyticsProps {
   rpcUrl?: string;
 }
 
-type AnalyticsTab = "overview" | "holders" | "trades" | "curve";
+type AnalyticsTab = "overview" | "holders" | "trades" | "curve" | "flow";
 
 function formatCompact(value: number): string {
   if (!Number.isFinite(value)) return "N/A";
@@ -136,7 +137,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
   if (loading) {
     return (
-      <div className="bg-solana-card border border-white/10 rounded-2xl p-8 text-center text-white/70" role="status">
+      <div className="rounded-2xl border border-[#14f195]/15 bg-[#080e0c] p-8 text-center text-white/70" role="status">
         Loading token analytics...
       </div>
     );
@@ -144,7 +145,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
 
   if (error || !analytics) {
     return (
-      <div className="bg-white/5 border border-white/10 rounded-2xl p-6" role="status">
+      <div className="rounded-2xl border border-[#14f195]/15 bg-[#080e0c] p-6" role="status">
         <p className="text-white font-medium">{error || "No token analytics were returned."}</p>
         <p className="text-white/60 text-sm mt-2">
           Check the mint address. If market-data providers are temporarily unavailable, please try again later.
@@ -162,11 +163,12 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
     { id: "holders", label: "Top holders" },
     { id: "trades", label: "Recent trades" },
     { id: "curve", label: "Bonding curve" },
+    { id: "flow", label: "Fly map" },
   ];
 
   return (
     <div className="space-y-6">
-      <section className="bg-solana-card border border-white/10 rounded-2xl p-6">
+      <section className="rounded-2xl border border-[#14f195]/15 bg-[#080e0c] p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-white">
@@ -175,7 +177,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
             <p className="text-white/60 text-sm font-mono mt-2 break-all">{token.mint}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <a href={`https://pump.fun/coin/${token.mint}`} target="_blank" rel="noopener noreferrer" className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl text-sm">
+            <a href={`https://pump.fun/coin/${token.mint}`} target="_blank" rel="noopener noreferrer" className="rounded-xl border border-[#14f195]/30 bg-[#14f195]/10 px-4 py-2 text-sm text-[#14f195] transition hover:bg-[#14f195]/20">
               View on Pump.fun
             </a>
             {token.marketUrl && (
@@ -196,7 +198,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
           </p>
         )}
         {token.dataSource === "onchain" && (
-          <p className="mt-4 text-sm text-yellow-400" role="note">
+          <p className="mt-4 text-sm text-[#14f195]/80" role="note">
             Token data was read from Solana mainnet. Market pricing and token metadata may be unavailable when market-data providers do not return this mint.
           </p>
         )}
@@ -209,7 +211,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
         <Metric label="Top accounts" value={holders.available ? holders.topAccountCount.toString() : "N/A"} detail={holders.available ? `Top 10 hold ${holders.top10Percentage.toFixed(2)}%` : "RPC holder data unavailable"} />
       </section>
 
-      <section className="bg-solana-card border border-white/10 rounded-2xl overflow-hidden">
+      <section className="overflow-hidden rounded-2xl border border-[#14f195]/15 bg-[#080e0c]">
         <nav className="flex overflow-x-auto border-b border-white/10" aria-label="Analytics sections">
           {tabs.map((tab) => (
             <button
@@ -218,7 +220,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
               onClick={() => setActiveTab(tab.id)}
               aria-current={activeTab === tab.id ? "page" : undefined}
               className={`px-5 py-4 text-sm whitespace-nowrap transition-colors ${
-                activeTab === tab.id ? "text-solana-blue border-b-2 border-solana-blue" : "text-white/60 hover:text-white"
+                activeTab === tab.id ? "border-b-2 border-[#14f195] text-[#14f195]" : "text-white/60 hover:text-white"
               }`}
             >
               {tab.label}
@@ -307,7 +309,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
               <div className="space-y-4">
                 <div className="flex justify-between text-sm text-white/70"><span>Progress</span><span>{bondingCurve.progress?.toFixed(1)}%</span></div>
                 <div className="h-3 bg-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-solana-blue rounded-full" style={{ width: `${bondingCurve.progress ?? 0}%` }} />
+                  <div className="h-full rounded-full bg-[#14f195]" style={{ width: `${bondingCurve.progress ?? 0}%` }} />
                 </div>
                 <div className="grid sm:grid-cols-2 gap-4 text-sm text-white/70">
                   <p>SOL needed: <span className="text-white">{bondingCurve.solNeeded?.toFixed(2) ?? "N/A"}</span></p>
@@ -315,6 +317,15 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
                 </div>
               </div>
             )
+          )}
+
+          {activeTab === "flow" && (
+            <PumpFunTradeFlowMap
+              mint={token.mint}
+              name={token.name}
+              symbol={token.symbol}
+              trades={recentTrades}
+            />
           )}
         </div>
       </section>

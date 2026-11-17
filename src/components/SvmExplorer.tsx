@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { SvmAccountInfo, SvmTransactionInfo, ProgramAnalysisResult, TokenAccountInfo, EpochInfo } from "@/lib/svm";
+import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel } from "@/lib/svm-network";
 
 interface CheckResponse {
   running: boolean;
@@ -10,6 +11,7 @@ interface CheckResponse {
 interface AccountResponse {
   account: SvmAccountInfo | null;
   tokens: TokenAccountInfo[];
+  network: string;
 }
 
 interface TransactionsResponse {
@@ -37,31 +39,31 @@ interface EpochResponse {
   epoch: EpochInfo | null;
 }
 
+const API_BASE = "/api/svm";
+
 export function SvmExplorer() {
-  const [rpcUrl, setRpcUrl] = useState("http://127.0.0.1:8899");
+  const [rpcUrl, setRpcUrl] = useState(DEFAULT_SVM_RPC_URL);
   const [isRunning, setIsRunning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pubkey, setPubkey] = useState("");
   const [account, setAccount] = useState<SvmAccountInfo | null>(null);
+  const [accountNetwork, setAccountNetwork] = useState<string | null>(null);
   const [tokens, setTokens] = useState<TokenAccountInfo[]>([]);
   const [transactions, setTransactions] = useState<SvmTransactionInfo[]>([]);
   const [epoch, setEpoch] = useState<EpochInfo | null>(null);
   const [analysisResult, setAnalysisResult] = useState<ProgramAnalysisResult | null>(null);
   const [programAccounts, setProgramAccounts] = useState<{ pubkey: string; owner: string; data: string; lamports: number }[]>([]);
   const [comprehensiveAnalysis, setComprehensiveAnalysis] = useState<any>(null);
+  const comprehensiveAnalysisRequestId = useRef(0);
+  const rpcSelectionVersion = useRef(0);
   const [airdropped, setAirdropped] = useState<AirdropResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState("");
 
-  const API_BASE = "/api/svm";
   const LAMPORTS_PER_SOL = 1000000000;
+  const isMainnet = getSvmNetworkLabel(rpcUrl) === "Mainnet";
 
-  useEffect(() => {
-    checkSvmStatus();
-    fetchEpochInfo();
-  }, [rpcUrl]);
-
-  async function checkSvmStatus() {
+  const checkSvmStatus = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}?action=check&rpcUrl=${encodeURIComponent(rpcUrl)}`);
       if (!res.ok) {
@@ -73,17 +75,17 @@ export function SvmExplorer() {
       const data = await res.json() as CheckResponse;
       setIsRunning(data.running);
       if (!data.running) {
-        setError("SVM is not running. Start a local validator with: solana-test-validator");
+        setError("The selected RPC endpoint is unavailable. Check the endpoint or choose another network.");
       } else {
         setError(null);
       }
     } catch {
       setIsRunning(false);
-      setError("Cannot connect to SVM. Is the local validator running?");
+      setError("Cannot connect to the selected RPC endpoint.");
     }
-  }
+  }, [rpcUrl]);
 
-  async function fetchEpochInfo() {
+  const fetchEpochInfo = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}?action=epoch&rpcUrl=${encodeURIComponent(rpcUrl)}`);
       if (res.ok) {
@@ -93,10 +95,29 @@ export function SvmExplorer() {
     } catch {
       // Silently handle epoch fetch errors
     }
-  }
+  }, [rpcUrl]);
+
+  useEffect(() => {
+    rpcSelectionVersion.current += 1;
+    comprehensiveAnalysisRequestId.current += 1;
+    setLoading(false);
+    setAccount(null);
+    setAccountNetwork(null);
+    setTokens([]);
+    setTransactions([]);
+    setEpoch(null);
+    setAnalysisResult(null);
+    setProgramAccounts([]);
+    setComprehensiveAnalysis(null);
+    setAirdropped(null);
+    setError(null);
+    checkSvmStatus();
+    fetchEpochInfo();
+  }, [checkSvmStatus, fetchEpochInfo]);
 
   async function fetchAccount() {
     if (!pubkey) return;
+    const requestVersion = rpcSelectionVersion.current;
     setLoading(true);
     setError(null);
     try {
@@ -107,19 +128,28 @@ export function SvmExplorer() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        setError(err.error || "Failed to fetch account");
+        if (requestVersion === rpcSelectionVersion.current) {
+          setError(err.error || "Failed to fetch account");
+        }
         return;
       }
       const data = await res.json() as AccountResponse;
-      setAccount(data.account);
-      setTokens(data.tokens || []);
-      if (!data.account) {
-        setError("Account not found");
+      if (requestVersion === rpcSelectionVersion.current) {
+        setAccount(data.account);
+        setAccountNetwork(data.network);
+        setTokens(data.tokens || []);
+        if (!data.account) {
+          setError("Account not found");
+        }
       }
     } catch {
-      setError("Network error. Is the SVM endpoint accessible?");
+      if (requestVersion === rpcSelectionVersion.current) {
+        setError("Network error. Is the SVM endpoint accessible?");
+      }
     } finally {
-      setLoading(false);
+      if (requestVersion === rpcSelectionVersion.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -247,8 +277,10 @@ export function SvmExplorer() {
 
   async function runComprehensiveAnalysis() {
     if (!pubkey) return;
+    const requestId = ++comprehensiveAnalysisRequestId.current;
     setLoading(true);
     setError(null);
+    setComprehensiveAnalysis(null);
     try {
       const res = await fetch(API_BASE, {
         method: "POST",
@@ -257,15 +289,23 @@ export function SvmExplorer() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
-        setError(err.error || "Failed to run comprehensive analysis");
+        if (requestId === comprehensiveAnalysisRequestId.current) {
+          setError(err.error || "Failed to run comprehensive analysis");
+        }
         return;
       }
       const data = await res.json();
-      setComprehensiveAnalysis(data.analysis);
+      if (requestId === comprehensiveAnalysisRequestId.current) {
+        setComprehensiveAnalysis(data.analysis);
+      }
     } catch {
-      setError("Network error. Is the SVM endpoint accessible?");
+      if (requestId === comprehensiveAnalysisRequestId.current) {
+        setError("Network error. Is the SVM endpoint accessible?");
+      }
     } finally {
-      setLoading(false);
+      if (requestId === comprehensiveAnalysisRequestId.current) {
+        setLoading(false);
+      }
     }
   }
 
@@ -274,7 +314,7 @@ export function SvmExplorer() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white mb-2">SVM Explorer</h1>
-          <p className="text-white/60">Local Solana Virtual Machine explorer for testing and debugging</p>
+          <p className="text-white/60">Explore account data on Mainnet, test networks, or a local validator.</p>
         </div>
 
         <div className="bg-solana-card rounded-2xl border border-white/10 p-6 mb-6">
@@ -287,12 +327,8 @@ export function SvmExplorer() {
                 className="w-full px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm focus:outline-none focus:border-solana-purple"
                 style={{ backgroundColor: "#111133", color: "white" }}
               >
-                <optgroup label="Local & Testnets" style={{ backgroundColor: "#111133", color: "white" }}>
-                  <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
-                  <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
-                  <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
-                </optgroup>
                 <optgroup label="Free Mainnet RPCs" style={{ backgroundColor: "#111133", color: "white" }}>
+                  <option value={DEFAULT_SVM_RPC_URL} style={{ backgroundColor: "#111133", color: "white" }}>Official Mainnet Beta</option>
                   <option value="https://solana-mainnet.g.alchemy.com/v2/demo" style={{ backgroundColor: "#111133", color: "white" }}>Alchemy Demo</option>
                   <option value="https://rpc.ankr.com/solana" style={{ backgroundColor: "#111133", color: "white" }}>Ankr</option>
                   <option value="https://solana.drpc.org" style={{ backgroundColor: "#111133", color: "white" }}>DRPC</option>
@@ -300,9 +336,16 @@ export function SvmExplorer() {
                   <option value="https://solana-rpc.publicnode.com" style={{ backgroundColor: "#111133", color: "white" }}>PublicNode</option>
                   <option value="https://solana-mainnet.chainstacklabs.com" style={{ backgroundColor: "#111133", color: "white" }}>Chainstack Labs</option>
                   <option value="https://solana.api.syndica.io/api-key/free/solana-mainnet" style={{ backgroundColor: "#111133", color: "white" }}>Syndica Free</option>
-                  <option value="https://api.mainnet-beta.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Official Mainnet Beta</option>
+                </optgroup>
+                <optgroup label="Local & Testnets" style={{ backgroundColor: "#111133", color: "white" }}>
+                  <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
+                  <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
+                  <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
                 </optgroup>
               </select>
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Mainnet is selected by default. Balances are specific to the selected network; Devnet and local balances are separate from Mainnet.
+              </p>
             </div>
             <div className="flex items-end">
               <div className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -310,7 +353,7 @@ export function SvmExplorer() {
                   ? "bg-solana-green/20 text-solana-green"
                   : "bg-risk-critical/20 text-risk-critical"
               }`}>
-                {isRunning ? "SVM Running" : "SVM Not Running"}
+                {isRunning ? "RPC Connected" : "RPC Unavailable"}
               </div>
             </div>
           </div>
@@ -383,14 +426,14 @@ export function SvmExplorer() {
             </button>
             <button
               onClick={() => requestAirdrop()}
-              disabled={loading || !pubkey || !isRunning}
+              disabled={loading || !pubkey || !isRunning || isMainnet}
               className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Random Airdrop (0.1-5 SOL)
             </button>
             <button
               onClick={() => requestAirdrop(1)}
-              disabled={loading || !pubkey || !isRunning}
+              disabled={loading || !pubkey || !isRunning || isMainnet}
               className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               Airdrop 1 SOL
@@ -407,14 +450,16 @@ export function SvmExplorer() {
               />
               <button
                 onClick={() => requestAirdrop(parseFloat(customAmount))}
-                disabled={loading || !pubkey || !isRunning || !customAmount}
+                disabled={loading || !pubkey || !isRunning || isMainnet || !customAmount}
                 className="px-4 py-2 bg-solana-purple/20 border border-solana-purple/30 text-solana-blue rounded-xl font-medium hover:bg-solana-purple/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 Airdrop Custom
               </button>
             </div>
             <p className="text-xs text-white/40 mt-2">
-              <span className="text-yellow-400">⚠</span> Local validator faucet is closed. Use <a href="https://faucet.solana.com" target="_blank" rel="noopener noreferrer" className="text-solana-blue underline hover:text-white">https://faucet.solana.com</a> for devnet/testnet SOL, or run your own local validator.
+              {isMainnet
+                ? "Airdrops are unavailable on Mainnet. Select Devnet, Testnet, or Local Validator for test SOL."
+                : <>Use <a href="https://faucet.solana.com" target="_blank" rel="noopener noreferrer" className="text-solana-blue underline hover:text-white">https://faucet.solana.com</a> for Devnet/Testnet SOL, or run a local validator.</>}
             </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
@@ -466,8 +511,14 @@ export function SvmExplorer() {
                 <p className="text-white font-mono text-sm break-all">{account.pubkey}</p>
               </div>
               <div>
-                <p className="text-white/50 text-sm">Balance</p>
-                <p className="text-white font-mono">{account.sol.toFixed(6)} SOL ({account.lamports} lamports)</p>
+                <p className="text-white/50 text-sm">
+                  {accountNetwork ? `Balance on ${accountNetwork}` : "Balance on selected RPC"}
+                </p>
+                <p className="text-white font-mono">{account.sol.toFixed(9)} SOL ({account.lamports} lamports)</p>
+              </div>
+              <div>
+                <p className="text-white/50 text-sm">RPC Network</p>
+                <p className="text-white/80">{accountNetwork || "Unverified"}</p>
               </div>
               <div>
                 <p className="text-white/50 text-sm">Owner</p>
@@ -681,10 +732,16 @@ export function SvmExplorer() {
                 <h3 className="text-white font-medium mb-2">Account Data Analyzed</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
                   <div><span className="text-white/50">Address:</span> <span className="text-white font-mono break-all">{comprehensiveAnalysis.account.pubkey}</span></div>
-                  <div><span className="text-white/50">Balance:</span> <span className="text-white">{comprehensiveAnalysis.account.sol} SOL</span></div>
+                  <div><span className="text-white/50">Network:</span> <span className="text-white">{comprehensiveAnalysis.network || "Custom RPC (network unverified)"}</span></div>
+                  <div><span className="text-white/50">Account balance:</span> <span className="text-white">{Number(comprehensiveAnalysis.account.sol).toFixed(9)} SOL on {comprehensiveAnalysis.network || "unverified network"}</span></div>
                   <div><span className="text-white/50">Type:</span> <span className="text-white/80">{comprehensiveAnalysis.account.accountType || "Unknown"}</span></div>
                   <div><span className="text-white/50">Owner:</span> <span className="text-white/60 font-mono break-all">{comprehensiveAnalysis.account.owner}</span></div>
                 </div>
+                {comprehensiveAnalysis.network && comprehensiveAnalysis.network !== "Mainnet" && (
+                  <p className="mt-3 text-xs leading-5 text-white/50" role="note">
+                    Balances are independent across Solana networks. This {comprehensiveAnalysis.network} balance may differ from the same address on Mainnet.
+                  </p>
+                )}
               </div>
             )}
 
@@ -746,17 +803,13 @@ export function SvmExplorer() {
           </div>
         )}
 
-        <div className="text-center text-white/50 text-sm">
-          <p className="mb-2">To use SVM Explorer, run a local validator:</p>
-          <code className="bg-black/20 px-3 py-1 rounded mb-2 inline-block">
-            solana-test-validator
-          </code>
-          <p className="mt-4 text-xs text-white/40">
-            Install Solana CLI from: https://solana.com/docs/intro/getting-started
-            <br />
-            Alternatively, use devnet: <code className="bg-black/20 px-1 rounded">https://api.devnet.solana.com</code>
-          </p>
-        </div>
+        {!isRunning && (
+          <div className="text-center text-white/50 text-sm">
+            <p className="mt-4 text-xs text-white/40">
+              The selected RPC endpoint is unavailable. Choose another endpoint, or run <code className="bg-black/20 px-1 rounded">solana-test-validator</code> for local development.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

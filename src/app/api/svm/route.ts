@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAccountInfo, getRecentTransactions, airdropSol, analyzeProgramLogs, getProgramAccounts, isSvmRunning, getTokenAccounts, getEpochInfo } from "@/lib/svm";
+import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel } from "@/lib/svm-network";
 import { z } from "zod";
 
 const SvmActionSchema = z.object({
@@ -27,13 +28,13 @@ export async function GET(request: NextRequest) {
   const action = searchParams.action as string;
 
   if (action === "check") {
-    const rpcUrl = searchParams.rpcUrl || "http://127.0.0.1:8899";
+    const rpcUrl = searchParams.rpcUrl || DEFAULT_SVM_RPC_URL;
     const running = await isSvmRunning(rpcUrl);
     return NextResponse.json({ running });
   }
 
   if (action === "epoch") {
-    const rpcUrl = searchParams.rpcUrl || "http://127.0.0.1:8899";
+    const rpcUrl = searchParams.rpcUrl || DEFAULT_SVM_RPC_URL;
     const epoch = await getEpochInfo(rpcUrl);
     return NextResponse.json({ epoch });
   }
@@ -54,7 +55,8 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
-    const rpcUrl = data.rpcUrl || "http://127.0.0.1:8899";
+    const rpcUrl = data.rpcUrl || DEFAULT_SVM_RPC_URL;
+    const network = getSvmNetworkLabel(rpcUrl);
 
     switch (data.action) {
       case "check": {
@@ -68,7 +70,7 @@ export async function POST(request: NextRequest) {
         }
         const info = await getAccountInfo(data.pubkey, rpcUrl);
         const tokens = info ? await getTokenAccounts(data.pubkey, rpcUrl) : [];
-        return NextResponse.json({ account: info, tokens });
+        return NextResponse.json({ account: info, tokens, network });
       }
 
       case "transactions": {
@@ -140,13 +142,14 @@ export async function POST(request: NextRequest) {
 
         const accountSummary = info ? `
 Account: ${info.pubkey}
-Balance: ${info.sol} SOL (${info.lamports} lamports)
+Network: ${network}
+Account balance: ${info.sol} SOL (${info.lamports} lamports) on ${network}
 Owner: ${info.owner}
 Type: ${info.accountType || "Unknown"}
 Executable: ${info.executable}
 Rent Exempt: ${info.rentExempt}
 Data Size: ${info.dataSize} bytes
-` : "Account not found";
+` : `Account not found on ${network}`;
 
         const tokensSummary = tokens.length > 0 ? tokens.map(t => `
   - Mint: ${t.mint}
@@ -163,6 +166,7 @@ Data Size: ${info.dataSize} bytes
 `).join("") : "No recent transactions";
 
         const systemPrompt = `You are a Solana blockchain security analyst. Analyze the provided account data and provide a comprehensive security assessment.
+All balance values are specific to the named RPC network. Never describe a Devnet or Testnet balance as a Mainnet or total wallet balance. Do not state, estimate, round, or reinterpret SOL balances or token amounts; the exact RPC values are displayed separately by the application. Do not infer dormancy from missing transaction data.
 
 Format your response as JSON with these keys:
 - riskLevel: "low" | "medium" | "high"
@@ -179,7 +183,7 @@ Format your response as JSON with these keys:
               { role: "system", content: systemPrompt },
               {
                 role: "user",
-                content: `Analyze this Solana account comprehensively:\n\n${accountSummary}\n\nToken Accounts:\n${tokensSummary}\n\nRecent Transactions:\n${txSummary}\n\nProvide a complete security assessment including risk level, potential issues, and actionable recommendations.`,
+                content: `Analyze this Solana account comprehensively. The selected RPC network is ${network}; make clear that any account balance is specific to this network and is not the wallet's balance on other clusters.\n\n${accountSummary}\n\nToken Accounts:\n${tokensSummary}\n\nRecent Transactions:\n${txSummary}\n\nProvide a complete security assessment including risk level, potential issues, and actionable recommendations.`,
               },
             ],
             model: "qwen/qwen3.8-27b",
@@ -208,6 +212,7 @@ Format your response as JSON with these keys:
           analysis: {
             ...parsed,
             account: info,
+            network,
             tokens,
             transactions: txs,
           },

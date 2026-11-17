@@ -3,7 +3,7 @@ import { SvmExplorer } from "@/components/SvmExplorer";
 
 export const metadata: Metadata = {
   title: "SVM Explorer | Solcurity",
-  description: "Local Solana Virtual Machine explorer for testing and debugging",
+  description: "Explore Solana account data on Mainnet, test networks, or a local validator.",
 };
 
 export default function SvmPage() {

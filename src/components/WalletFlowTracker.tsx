@@ -23,7 +23,7 @@ interface ActivityResponse {
   error?: string;
 }
 
-type ActivityFilter = "all" | "incoming" | "outgoing" | "other";
+type ActivityFilter = "all" | "incoming" | "outgoing" | "other" | "unverified";
 
 const ACTIVITY_LIMIT = 24;
 const REFRESH_INTERVAL = 15_000;
@@ -155,9 +155,12 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
 
   const visibleActivities = useMemo(
     () => activities.filter((activity) => {
-      if (filter === "incoming") return isIncoming(activity);
-      if (filter === "outgoing") return isOutgoing(activity);
-      if (filter === "other") return !isIncoming(activity) && !isOutgoing(activity);
+      if (filter === "incoming") return activity.detailsAvailable && isIncoming(activity);
+      if (filter === "outgoing") return activity.detailsAvailable && isOutgoing(activity);
+      if (filter === "other") {
+        return activity.detailsAvailable && !isIncoming(activity) && !isOutgoing(activity);
+      }
+      if (filter === "unverified") return !activity.detailsAvailable;
       return true;
     }),
     [activities, filter]
@@ -180,7 +183,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
   });
 
   return (
-    <main className="min-h-screen bg-[#050515] px-4 py-8 text-white sm:px-6 lg:py-12">
+    <div className="min-h-screen bg-[#050515] px-4 py-8 text-white sm:px-6 lg:py-12">
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -275,7 +278,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
               </p>
             </div>
             <div className="flex flex-wrap gap-1 rounded-lg border border-white/10 bg-black/20 p-1" role="group" aria-label="Filter map activity">
-              {(["all", "incoming", "outgoing", "other"] as ActivityFilter[]).map((option) => (
+              {(["all", "incoming", "outgoing", "other", "unverified"] as ActivityFilter[]).map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -368,6 +371,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
                         }}
                         className="cursor-pointer outline-none"
                       >
+                        <circle cx={x} cy={y} r="18" fill="transparent" pointerEvents="all" />
                         {selected && <circle cx={x} cy={y} r="25" fill={color} fillOpacity=".12" />}
                         <circle
                           cx={x}
@@ -462,7 +466,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
           )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }
 

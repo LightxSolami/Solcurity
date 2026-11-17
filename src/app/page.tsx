@@ -1,4 +1,5 @@
 import { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { PumpFunCreatorMonitor } from "@/components/pumpfuntool/PumpFunCreatorMonitor";
 import { WalletTracker } from "@/components/WalletTracker";
@@ -18,18 +19,16 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <Link
             href="/tools/pumpfuntool"
-            className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-[#f5a623]/25 bg-[radial-gradient(ellipse_at_90%_50%,rgba(245,166,35,0.14),transparent_42%),linear-gradient(120deg,rgba(26,18,12,0.96),rgba(12,12,23,0.98))] p-5 transition hover:border-[#f5a623]/50 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+            className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-[#14f195]/20 bg-[radial-gradient(ellipse_at_90%_50%,rgba(20,241,149,0.12),transparent_42%),linear-gradient(120deg,rgba(7,22,17,0.96),rgba(12,12,23,0.98))] p-5 transition hover:border-[#14f195]/45 sm:flex-row sm:items-center sm:justify-between sm:p-6"
           >
             <div className="flex items-center gap-4">
               <span
-                role="img"
-                aria-label="Pump.fun"
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#f5a623]/25 bg-[#f5a623]/10 text-[11px] font-black italic tracking-tight text-[#ffc466]"
+                className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-[#14f195]/25 bg-[#14f195]/10"
               >
-                pump.fun
+                <Image src="/pumpf.jpg" alt="Pump.fun" width={56} height={56} className="h-full w-full object-cover" />
               </span>
               <span>
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-[#ffc466]/70">
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-[#14f195]/75">
                   Pump.fun · Token intelligence
                 </span>
                 <span className="mt-1 block text-lg font-semibold text-white">
@@ -40,7 +39,7 @@ export default function HomePage() {
                 </span>
               </span>
             </div>
-            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#f5a623]/25 bg-[#f5a623]/10 px-4 py-2.5 text-sm font-semibold text-[#ffc466] transition group-hover:bg-[#f5a623]/20 sm:self-auto">
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#14f195]/25 bg-[#14f195]/10 px-4 py-2.5 text-sm font-semibold text-[#14f195] transition group-hover:bg-[#14f195]/20 sm:self-auto">
               Open analytics
               <span aria-hidden="true">→</span>
             </span>
@@ -72,7 +71,7 @@ export default function HomePage() {
             href="/bubble-map"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 transition hover:border-white/20 hover:text-white"
           >
-            Wallet map
+            Fly map tracker
           </Link>
         </div>
       </section>

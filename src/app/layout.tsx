@@ -12,7 +12,7 @@ const footerGroups = [
       { href: "/svm", label: "SVM explorer" },
       { href: "/tools", label: "Tools" },
       { href: "/tools/pumpfuntool", label: "Token analytics" },
-      { href: "/bubble-map", label: "Wallet map" },
+      { href: "/bubble-map", label: "Fly map tracker" },
     ],
   },
   {
