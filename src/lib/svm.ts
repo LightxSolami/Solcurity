@@ -247,6 +247,11 @@ export async function airdropSol(
       };
     }
 
+    // Check if using devnet or testnet - airdrop should work here
+    const isDevnet = rpcUrl.includes("devnet");
+    const isTestnet = rpcUrl.includes("testnet");
+    const isLocalhost = rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1");
+
     const signature = await connection.requestAirdrop(publicKey, lamports);
 
     await connection.confirmTransaction(signature, "confirmed");
@@ -260,6 +265,14 @@ export async function airdropSol(
       return { signature: null, error: "Faucet rate limit reached. Try again later or use a local validator." };
     }
     if (errorMsg.includes("410") || errorMsg.includes("Gone") || errorMsg.includes("faucet is closed")) {
+      // Check if this is devnet/testnet - if so, the faucet might be temporarily unavailable
+      const isDevnetOrTestnet = rpcUrl.includes("devnet") || rpcUrl.includes("testnet");
+      if (isDevnetOrTestnet) {
+        return { 
+          signature: null, 
+          error: "Devnet/Testnet faucet is temporarily unavailable. Try again later, or get SOL from https://faucet.solana.com" 
+        };
+      }
       return { 
         signature: null, 
         error: "Local validator faucet is closed. Use devnet/testnet with https://faucet.solana.com for test SOL, or run your own local validator with airdrop enabled." 
