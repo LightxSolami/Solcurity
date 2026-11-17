@@ -42,16 +42,16 @@ export function useWallet() {
   const detectProvider = useCallback((): SolanaProvider | null => {
     if (typeof window === "undefined") return null;
 
-    if (window.solflare && (window.solflare as any).isSolflare) {
-      return window.solflare;
+    if (window.phantom?.solana) {
+      return window.phantom.solana;
     }
 
     if (window.solana && window.solana.isPhantom) {
       return window.solana;
     }
 
-    if (window.phantom?.solana) {
-      return window.phantom.solana;
+    if (window.solflare && window.solflare.isSolflare) {
+      return window.solflare;
     }
 
     if (window.solflare) {
@@ -64,13 +64,8 @@ export function useWallet() {
   const connect = useCallback(async () => {
     const provider = detectProvider();
     if (!provider) {
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        const dappUrl = encodeURIComponent(window.location.href);
-        const timeout = setTimeout(() => {
-          window.location.href = "https://phantom.app/mobile";
-        }, 3000);
-        window.location.href = `phantom://uplink?app=Solcurity&dappUrl=${dappUrl}`;
+      if (isMobile()) {
+        window.location.href = getPhantomMobileRedirectUrl();
       } else {
         alert("Please install a Solana wallet (Phantom or Solflare)");
       }
@@ -138,6 +133,14 @@ export function useWallet() {
     const provider = detectProvider();
     if (!provider) return;
 
+    if (provider.publicKey) {
+      setWallet({
+        connected: true,
+        publicKey: provider.publicKey.toBase58(),
+        provider,
+      });
+    }
+
     const handleConnect = () => {
       if (provider.publicKey) {
         setWallet({
@@ -174,11 +177,13 @@ export function useWallet() {
 
 export function isMobile(): boolean {
   if (typeof window === "undefined") return false;
-  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  return (
+    /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
 }
 
-export function getPhantomMobileRedirectUrl(): string {
-  const appName = "Solcurity";
-  const redirectUrl = encodeURIComponent(window.location.origin);
-  return `https://phantom.app/uplink?app=${appName}&redirect=${redirectUrl}`;
+export function getPhantomMobileRedirectUrl(dappUrl = window.location.href): string {
+  const url = new URL(dappUrl, window.location.href);
+  return `https://phantom.com/ul/browse/${encodeURIComponent(url.toString())}?ref=${encodeURIComponent(url.origin)}`;
 }

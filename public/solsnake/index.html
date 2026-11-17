@@ -187,9 +187,13 @@ $('mm').onclick=()=>{aud();musicOn=!musicOn;$('mm').textContent='Music '+(musicO
 $('ss').onclick=()=>{aud();sfxOn=!sfxOn;$('ss').textContent='SFX '+(sfxOn?'on':'off');if(!sfxOn)setBoostSnd(0)};
 SK.forEach((c,i)=>{const b=document.createElement('button');b.textContent=SN[i];b.style.borderColor=c[0];b.onclick=()=>{skin=i;try{localStorage.setItem('ss_skin',i)}catch(e){}[...$('skins').children].forEach((q,j)=>q.classList.toggle('sel',j===i));aud();sfx('tick')};if(i===skin)b.classList.add('sel');$('skins').appendChild(b)});
 $('shr').onclick=async()=>{const t='I placed #'+place+' of 5 in SOLSNAKE ARENA with length '+(me.len|0);try{if(navigator.share)await navigator.share({text:t});else{await navigator.clipboard.writeText(t);$('shr').textContent='Copied'}}catch(e){}};
-let prov=null;const gp=()=>{const w=window;return(w.phantom&&w.phantom.solana&&w.phantom.solana.isPhantom&&w.phantom.solana)||(w.solflare&&w.solflare.isSolflare&&w.solflare)||(w.backpack&&w.backpack.solana)||(w.solana&&w.solana.connect&&w.solana)||null};
+let prov=null;const gp=()=>{const w=window;return(w.phantom&&w.phantom.solana)||(w.solana&&w.solana.isPhantom&&w.solana)||(w.solflare&&w.solflare.isSolflare&&w.solflare)||(w.backpack&&w.backpack.solana)||(w.solana&&w.solana.connect&&w.solana)||null};
+const phantomBrowseUrl=()=>{const ref=document.referrer;const url=ref&&new URL(ref).origin===location.origin?ref:location.href;return'https://phantom.com/ul/browse/'+encodeURIComponent(url)+'?ref='+encodeURIComponent(location.origin)};
+const mobileBrowser=()=>/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const showConnectedWallet=(p,key=p.publicKey.toString())=>{prov=p;$('wal').textContent=key.slice(0,4)+'…'+key.slice(-4)+' · Disconnect';$('wn').textContent='Connected. Balances and paid rooms are not available in this build.'};
+const existingProvider=gp();if(existingProvider&&existingProvider.publicKey)showConnectedWallet(existingProvider);
 $('wal').onclick=async()=>{try{if(prov&&prov.publicKey){await prov.disconnect();prov=null;$('wal').textContent='Connect wallet';$('wn').textContent='Disconnected.';return}
- const p=gp();if(!p){$('wn').textContent='No Solana wallet found. Install Phantom, Solflare or Backpack and reload. You can still play without one.';return}
- const r=await p.connect();prov=p;const k=(r&&r.publicKey?r.publicKey:p.publicKey).toString();$('wal').textContent=k.slice(0,4)+'…'+k.slice(-4)+' · Disconnect';$('wn').textContent='Connected. Balances and paid rooms are not available in this build.'}catch(e){$('wn').textContent='Connection was declined or failed.'}};
+ const p=gp();if(!p){if(mobileBrowser()){$('wn').textContent='Opening Solcurity in Phantom…';location.href=phantomBrowseUrl()}else{$('wn').textContent='No Solana wallet detected. You can still play without connecting one.'}return}
+ const r=await p.connect();const key=(r&&r.publicKey?r.publicKey:p.publicKey).toString();showConnectedWallet(p,key)}catch(e){$('wn').textContent='Connection was declined or failed.'}};
 })();
 </script></body></html>

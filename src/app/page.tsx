@@ -13,6 +13,42 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#050515] text-white">
+      <section className="px-4 pt-5 sm:px-6" aria-label="Fly Map wallet tracker">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/bubble-map"
+            className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-[#65a9ff]/20 bg-[radial-gradient(ellipse_at_85%_50%,rgba(101,169,255,0.14),transparent_40%),linear-gradient(115deg,rgba(10,18,38,0.98),rgba(8,10,23,0.98))] p-5 transition hover:border-[#65a9ff]/45 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          >
+            <div className="flex items-center gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#65a9ff]/25 bg-[#65a9ff]/10 text-[#65a9ff]">
+                <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden="true">
+                  <path d="M6 22 13 10l7 12 6-10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <circle cx="6" cy="22" r="2.5" fill="#14f195" />
+                  <circle cx="13" cy="10" r="2.5" fill="#65a9ff" />
+                  <circle cx="20" cy="22" r="2.5" fill="#9b8cff" />
+                  <circle cx="26" cy="12" r="2.5" fill="#14f195" />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-[#65a9ff]/75">
+                  Interactive · Live public activity
+                </span>
+                <span className="mt-1 block text-lg font-semibold text-white">
+                  Fly Map wallet tracker
+                </span>
+                <span className="mt-1 block text-sm text-white/50">
+                  Follow a wallet’s recent transactions, filter activity, and inspect each event.
+                </span>
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#65a9ff]/25 bg-[#65a9ff]/10 px-4 py-2.5 text-sm font-semibold text-[#9bcaff] transition group-hover:bg-[#65a9ff]/20 sm:self-auto">
+              Open Fly Map
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+        </div>
+      </section>
+
       <WalletTracker />
 
       <section className="px-4 pb-8 sm:px-6" aria-label="Pump.fun analytics">

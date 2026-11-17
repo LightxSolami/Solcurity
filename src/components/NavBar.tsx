@@ -9,6 +9,7 @@ import { useWallet } from "@/hooks/useWallet";
 const navItems = [
   { href: "/", label: "Tracker" },
   { href: "/scanner", label: "Scanner" },
+  { href: "/bubble-map", label: "Fly Map" },
   { href: "/svm", label: "SVM Explorer" },
   { href: "/tools", label: "Tools" },
   { href: "/games", label: "Games" },
