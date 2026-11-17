@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       : [];
 
     const detailsAvailable =
-      page.length === 0 || transactions.some((transaction) => transaction !== null);
+      page.length === 0 || transactions.every((transaction) => transaction !== null);
     const activities = page.map((signatureInfo, index) => {
       const transaction = transactions[index];
       const meta = transaction?.meta;
@@ -117,6 +117,8 @@ export async function GET(request: NextRequest) {
       const counterparties = accountKeys
         .filter((key) => key.signer && key.pubkey.toBase58() !== address)
         .map((key) => key.pubkey.toBase58());
+      const programs = (transaction?.transaction.message.instructions ?? [])
+        .map((instruction) => instruction.programId.toBase58());
 
       return {
         signature: signatureInfo.signature,
@@ -127,6 +129,7 @@ export async function GET(request: NextRequest) {
         solChange,
         tokenChanges,
         counterparties,
+        programs: Array.from(new Set(programs)),
         feeLamports: meta?.fee ?? null,
       };
     });

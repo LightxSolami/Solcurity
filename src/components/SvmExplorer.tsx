@@ -413,6 +413,9 @@ export function SvmExplorer() {
                 Airdrop Custom
               </button>
             </div>
+            <p className="text-xs text-white/40 mt-2">
+              <span className="text-yellow-400">⚠</span> Local validator faucet is closed. Use <a href="https://faucet.solana.com" target="_blank" rel="noopener noreferrer" className="text-solana-blue underline hover:text-white">https://faucet.solana.com</a> for devnet/testnet SOL, or run your own local validator.
+            </p>
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <button

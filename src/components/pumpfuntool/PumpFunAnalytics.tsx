@@ -29,9 +29,10 @@ interface Analytics {
     createdTimestamp: number;
     totalSupply: number;
     complete: boolean;
-    dataSource?: "pumpfun" | "dexscreener" | "onchain";
+    dataSource?: "pumpfun" | "dexscreener" | "geckoterminal" | "onchain";
     dexId?: string;
     marketUrl?: string;
+    marketPairAddress?: string;
   };
   price: { sol: number; usd: number | null; marketCap: number; marketCapUsd: number | null };
   bondingCurve: {
@@ -189,6 +190,11 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
             DEX Screener supplies market pricing. Holder balances, bonding-curve state, and recent swaps are queried from Solana mainnet.
           </p>
         )}
+        {token.dataSource === "geckoterminal" && (
+          <p className="mt-4 text-sm text-white/60" role="note">
+            GeckoTerminal supplies token metadata and market data. No recent swaps may be available for low-activity pools.
+          </p>
+        )}
         {token.dataSource === "onchain" && (
           <p className="mt-4 text-sm text-yellow-400" role="note">
             Token data was read from Solana mainnet. Market pricing and token metadata may be unavailable when market-data providers do not return this mint.
@@ -226,7 +232,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
               <div className="space-y-3">
                 <h3 className="text-white font-semibold">Token information</h3>
                 <p className="text-white/60">Supply: <span className="text-white">{formatCompact(token.totalSupply / 1e6)}</span></p>
-                <p className="text-white/60">{token.dataSource === "dexscreener" ? "Market pair created" : "Created"}: <span className="text-white">{token.createdTimestamp ? format(new Date(token.createdTimestamp * 1000), "PPpp") : "N/A"}</span></p>
+                <p className="text-white/60">{token.dataSource === "dexscreener" || token.dataSource === "geckoterminal" ? "Market pair created" : "Created"}: <span className="text-white">{token.createdTimestamp ? format(new Date(token.createdTimestamp * 1000), "PPpp") : "N/A"}</span></p>
                 <p className="text-white/60">Creator: <span className="text-white font-mono break-all">{token.creator || "N/A"}</span></p>
                 {token.dexId && <p className="text-white/60">Market: <span className="text-white">{token.dexId}</span></p>}
               </div>
@@ -291,9 +297,11 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
           {activeTab === "curve" && (
             !bondingCurve.available ? (
               <p className="text-white/60" role="status">
-                {token.complete
-                  ? "This token has graduated from its bonding curve. The liquidity metric shows its current market pool."
-                  : "No active Pump.fun bonding-curve account was found for this mint. It may have graduated or may not be a Pump.fun token."}
+                {token.dataSource === "geckoterminal" && token.marketPairAddress
+                  ? "A market pool is available; bonding-curve progress is not provided for this market data source."
+                  : token.complete
+                    ? "This token has graduated from its bonding curve. The liquidity metric shows its current market pool."
+                    : "No active Pump.fun bonding-curve account was found for this mint. It may have graduated or may not be a Pump.fun token."}
               </p>
             ) : (
               <div className="space-y-4">

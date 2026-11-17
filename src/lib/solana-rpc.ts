@@ -1,23 +1,12 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL, type GetProgramAccountsConfig, type TokenAccountBalancePair } from "@solana/web3.js";
+import { buildFreeRpcEndpoints } from "@/lib/rpc-endpoints";
 
-// Use the configured endpoint first, then public mainnet endpoints that support Solana JSON-RPC.
-const FREE_RPC_ENDPOINTS = [
-  process.env.SOLANARPCURL,
-  "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY", // Replace YOUR_HELIUS_KEY with your actual Helius API key
-  "https://solana-mainnet.g.alchemy.com/v2/demo",
-  "https://rpc.ankr.com/solana",
-  "https://solana.drpc.org",
-  "https://solana-mainnet.g.alchemy.com/v2/demo",
-  "https://rpc.ankr.com/solana",
-  "https://solana.drpc.org",
-  "https://api.mainnet-beta.solana.com",
-  "https://solana-mainnet.g.alchemy.com/v2/demo",
-].filter((url): url is string => Boolean(url));
+const FREE_RPC_ENDPOINTS = buildFreeRpcEndpoints();
 
 let currentRpcIndex = 0;
 
 export function createSolanaConnection(rpcUrl?: string): Connection {
-  const url = rpcUrl || FREE_RPC_ENDPOINTS[currentRpcIndex];
+  const url = rpcUrl || FREE_RPC_ENDPOINTS[currentRpcIndex] || "https://api.mainnet-beta.solana.com";
   return new Connection(url, {
     commitment: "confirmed",
     wsEndpoint: undefined,

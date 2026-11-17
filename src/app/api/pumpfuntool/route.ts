@@ -26,7 +26,7 @@ interface PumpFunToken {
   complete: boolean;
   usdMarketCap: number | null;
   curveAvailable?: boolean;
-  dataSource?: "pumpfun" | "dexscreener" | "onchain";
+  dataSource?: "pumpfun" | "dexscreener" | "geckoterminal" | "onchain";
   marketLiquiditySol?: number;
   marketLiquidityTokens?: number;
   marketPriceSol?: number | null;
@@ -242,6 +242,11 @@ function normalizePumpFunToken(data: Record<string, unknown>, requestedMint: str
 }
 
 async function fetchPumpFunTokenData(mint: string, rpcUrl?: string): Promise<PumpFunToken> {
+  const token = await fetchTokenDataFromProviders(mint, rpcUrl);
+  return enrichWithGeckoTerminalData(token, mint);
+}
+
+async function fetchTokenDataFromProviders(mint: string, rpcUrl?: string): Promise<PumpFunToken> {
   try {
     return await fetchPumpFunTokenDataFromPumpPortal(mint);
   } catch (pumpPortalError) {
@@ -428,6 +433,138 @@ async function fetchPumpFunTokenDataFromDexScreener(mint: string): Promise<PumpF
     marketUrl: pairAddress
       ? `https://dexscreener.com/solana/${encodeURIComponent(pairAddress)}`
       : undefined,
+  };
+}
+
+async function fetchGeckoTerminalJson(url: string, label: string): Promise<unknown | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) {
+      throw new Error(`GeckoTerminal returned HTTP ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    console.warn(`GeckoTerminal ${label} lookup failed:`, error);
+    return null;
+  }
+}
+
+async function enrichWithGeckoTerminalData(
+  token: PumpFunToken,
+  mint: string
+): Promise<PumpFunToken> {
+  const needsMetadata = token.name === "Unknown token" || token.symbol === "UNKNOWN";
+  const needsPool = !token.marketPairAddress;
+  if (!needsMetadata && !needsPool) return token;
+
+  const [tokenResponse, poolsResponse] = await Promise.all([
+    needsMetadata
+      ? fetchGeckoTerminalJson(
+          `https://api.geckoterminal.com/api/v2/networks/solana/tokens/${encodeURIComponent(mint)}`,
+          "token metadata"
+        )
+      : Promise.resolve(null),
+    needsPool
+      ? fetchGeckoTerminalJson(
+          `https://api.geckoterminal.com/api/v2/networks/solana/tokens/${encodeURIComponent(mint)}/pools?page=1`,
+          "market pool"
+        )
+      : Promise.resolve(null),
+  ]);
+
+  const geckoToken = getRecord(getRecord(tokenResponse)?.data);
+  const tokenAttributes = getRecord(geckoToken?.attributes) ?? {};
+  const pools = getRecord(poolsResponse)?.data;
+  const matchingPools = Array.isArray(pools)
+    ? pools.flatMap((entry) => {
+        const pool = getRecord(entry);
+        const attributes = getRecord(pool?.attributes);
+        const relationships = getRecord(pool?.relationships);
+        const baseToken = getRecord(getRecord(relationships?.base_token)?.data);
+        const quoteToken = getRecord(getRecord(relationships?.quote_token)?.data);
+        if (
+          !pool ||
+          !attributes ||
+          (getString(baseToken ?? {}, "id") !== `solana_${mint}` &&
+            getString(quoteToken ?? {}, "id") !== `solana_${mint}`)
+        ) {
+          return [];
+        }
+        return [{ attributes, relationships }];
+      })
+    : [];
+  const pool = matchingPools.sort(
+    (left, right) =>
+      getNumber(right.attributes, "reserve_in_usd") -
+      getNumber(left.attributes, "reserve_in_usd")
+  )[0];
+
+  const enriched: PumpFunToken = {
+    ...token,
+    name: needsMetadata ? getString(tokenAttributes, "name") || token.name : token.name,
+    symbol: needsMetadata ? getString(tokenAttributes, "symbol") || token.symbol : token.symbol,
+  };
+  if (!pool) return enriched;
+
+  const relationships = pool.relationships ?? {};
+  const baseTokenId = getString(
+    getRecord(getRecord(relationships.base_token)?.data) ?? {},
+    "id"
+  );
+  const quoteTokenId = getString(
+    getRecord(getRecord(relationships.quote_token)?.data) ?? {},
+    "id"
+  );
+  const targetIsBase = baseTokenId === `solana_${mint}`;
+  const solanaTokenId = "solana_So11111111111111111111111111111111111111112";
+  const quoteIsSol = targetIsBase ? quoteTokenId === solanaTokenId : baseTokenId === solanaTokenId;
+  const attributes = pool.attributes;
+  const priceSol = getNumber(
+    attributes,
+    targetIsBase ? "base_token_price_native_currency" : "quote_token_price_native_currency"
+  );
+  const priceUsd = getNumber(
+    attributes,
+    targetIsBase ? "base_token_price_usd" : "quote_token_price_usd"
+  ) || getNumber(tokenAttributes, "price_usd");
+  const marketCapUsd =
+    getNumber(attributes, "market_cap_usd") ||
+    getNumber(attributes, "fdv_usd") ||
+    getNumber(tokenAttributes, "fdv_usd");
+  const reserveUsd = getNumber(attributes, "reserve_in_usd");
+  const quotePriceUsd = getNumber(
+    attributes,
+    targetIsBase ? "quote_token_price_usd" : "base_token_price_usd"
+  );
+  const pairAddress = getString(attributes, "address");
+  const createdTimestamp = Date.parse(getString(attributes, "pool_created_at"));
+  const dex = getRecord(getRecord(relationships.dex)?.data);
+
+  return {
+    ...enriched,
+    createdTimestamp: enriched.createdTimestamp ||
+      (Number.isFinite(createdTimestamp) ? Math.floor(createdTimestamp / 1000) : 0),
+    usdMarketCap: enriched.usdMarketCap ?? (marketCapUsd > 0 ? marketCapUsd : null),
+    marketLiquiditySol: quoteIsSol && quotePriceUsd > 0
+      ? reserveUsd / (2 * quotePriceUsd)
+      : enriched.marketLiquiditySol ?? 0,
+    marketLiquidityTokens: priceUsd > 0
+      ? reserveUsd / (2 * priceUsd)
+      : enriched.marketLiquidityTokens ?? 0,
+    marketPriceSol: priceSol > 0 ? priceSol : enriched.marketPriceSol,
+    marketPriceUsd: priceUsd > 0 ? priceUsd : enriched.marketPriceUsd,
+    marketCapSol: marketCapUsd > 0 && priceUsd > 0 && priceSol > 0
+      ? marketCapUsd * (priceSol / priceUsd)
+      : enriched.marketCapSol,
+    dexId: getString(dex ?? {}, "id") || enriched.dexId,
+    marketPairAddress: pairAddress || enriched.marketPairAddress,
+    marketUrl: pairAddress
+      ? `https://www.geckoterminal.com/solana/pools/${encodeURIComponent(pairAddress)}`
+      : enriched.marketUrl,
+    dataSource: "geckoterminal",
   };
 }
 
@@ -796,7 +933,7 @@ function calculatePrice(token: PumpFunToken): {
   marketCap: number;
   marketCapUsd: number | null;
 } {
-  if (token.dataSource === "dexscreener") {
+  if (token.dataSource === "dexscreener" || token.dataSource === "geckoterminal") {
     return {
       sol: token.marketPriceSol ?? 0,
       usd: token.marketPriceUsd ?? null,
@@ -829,6 +966,10 @@ function calculateBondingCurveProgress(token: PumpFunToken): {
   tokensRemaining: number | null;
   available: boolean;
 } {
+  if (token.dataSource === "geckoterminal" && token.marketPairAddress) {
+    return { progress: null, solNeeded: null, tokensRemaining: null, available: false };
+  }
+
   if (
     !token.curveAvailable ||
     token.virtualSolReserves <= 0 ||
@@ -930,10 +1071,14 @@ export async function POST(request: NextRequest) {
             error: holdersResult.error,
           },
           liquidity: {
-            sol: token.curveAvailable && !token.complete
+            sol: token.dataSource === "geckoterminal"
+              ? token.marketLiquiditySol ?? 0
+              : token.curveAvailable && !token.complete
               ? token.realSolReserves / 1e9
               : token.marketLiquiditySol ?? 0,
-            tokens: token.curveAvailable && !token.complete
+            tokens: token.dataSource === "geckoterminal"
+              ? token.marketLiquidityTokens ?? 0
+              : token.curveAvailable && !token.complete
               ? token.realTokenReserves / 1e6
               : token.marketLiquidityTokens ?? 0,
           },

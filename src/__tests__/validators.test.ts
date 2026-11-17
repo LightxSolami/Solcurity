@@ -1,6 +1,29 @@
 import { SolanaAddressSchema, ScanRequestSchema } from "@/lib/validators";
+import { buildFreeRpcEndpoints } from "@/lib/rpc-endpoints";
 
 describe("Validators", () => {
+  describe("buildFreeRpcEndpoints", () => {
+    const originalRpcUrl = process.env.SOLANARPCURL;
+
+    afterEach(() => {
+      if (originalRpcUrl === undefined) {
+        delete process.env.SOLANARPCURL;
+      } else {
+        process.env.SOLANARPCURL = originalRpcUrl;
+      }
+    });
+
+    it("removes placeholder credentials and keeps valid public RPC endpoints", () => {
+      process.env.SOLANARPCURL = "https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY";
+
+      const endpoints = buildFreeRpcEndpoints();
+
+      expect(endpoints).not.toContain("https://mainnet.helius-rpc.com/?api-key=YOUR_HELIUS_KEY");
+      expect(endpoints).toContain("https://api.mainnet-beta.solana.com");
+      expect(new Set(endpoints).size).toBe(endpoints.length);
+    });
+  });
+
   describe("SolanaAddressSchema", () => {
     const validAddresses = [
       "9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM",

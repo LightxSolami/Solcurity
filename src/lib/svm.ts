@@ -259,6 +259,12 @@ export async function airdropSol(
     if (errorMsg.includes("429") || errorMsg.includes("rate limit") || errorMsg.includes("Too Many Requests")) {
       return { signature: null, error: "Faucet rate limit reached. Try again later or use a local validator." };
     }
+    if (errorMsg.includes("410") || errorMsg.includes("Gone") || errorMsg.includes("faucet is closed")) {
+      return { 
+        signature: null, 
+        error: "Local validator faucet is closed. Use devnet/testnet with https://faucet.solana.com for test SOL, or run your own local validator with airdrop enabled." 
+      };
+    }
     if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("ECONNREFUSED")) {
       return { signature: null, error: "Cannot connect to RPC endpoint. Is the local validator running?" };
     }

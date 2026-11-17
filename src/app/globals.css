@@ -27,8 +27,8 @@ main:has(> iframe.snake-arena-frame) {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border-color: rgba(153, 69, 255, 0.3);
-  background: #05030c;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: #070812;
 }
 
 .site-footer::before {
@@ -36,36 +36,14 @@ main:has(> iframe.snake-arena-frame) {
   z-index: 0;
   inset: 0;
   background:
-    radial-gradient(circle at 10% 40%, rgba(20, 241, 149, 0.8) 0 2px, rgba(20, 241, 149, 0.2) 3px, transparent 12px),
-    radial-gradient(circle at 28% 75%, rgba(56, 213, 255, 0.75) 0 2px, rgba(56, 213, 255, 0.18) 3px, transparent 12px),
-    radial-gradient(circle at 48% 24%, rgba(255, 61, 242, 0.72) 0 2px, rgba(255, 61, 242, 0.18) 3px, transparent 12px),
-    radial-gradient(circle at 69% 65%, rgba(153, 69, 255, 0.8) 0 2px, rgba(153, 69, 255, 0.22) 3px, transparent 14px),
-    radial-gradient(circle at 88% 35%, rgba(255, 210, 61, 0.72) 0 2px, rgba(255, 210, 61, 0.18) 3px, transparent 12px),
-    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.12), transparent 35%),
-    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.16), transparent 38%),
-    radial-gradient(ellipse at 50% 100%, rgba(20, 100, 180, 0.12), transparent 40%);
+    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.035), transparent 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.05), transparent 38%);
   content: "";
-  animation: solsnake-footer-drift 18s ease-in-out infinite alternate;
   pointer-events: none;
 }
 
 .site-footer__content {
   position: relative;
-}
-
-@keyframes solsnake-footer-drift {
-  from {
-    transform: translate3d(-3%, 2%, 0) scale(1);
-  }
-  to {
-    transform: translate3d(3%, -2%, 0) scale(1.08);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .site-footer::before {
-    animation: none;
-  }
 }
 
 @layer utilities {
@@ -134,94 +112,157 @@ main:has(> iframe.snake-arena-frame) {
   box-shadow: 0 0 24px rgba(20, 241, 149, 0.14);
 }
 
-.tracker-radar {
+.tracker-atom {
   position: relative;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(20, 241, 149, 0.1), rgba(153, 69, 255, 0.04) 48%, transparent 70%);
+  background: radial-gradient(circle, rgba(20, 241, 149, 0.14), rgba(153, 69, 255, 0.07) 42%, transparent 72%);
+  filter: drop-shadow(0 0 24px rgba(20, 241, 149, 0.1));
 }
 
-.tracker-radar__ring,
-.tracker-radar__sweep,
-.tracker-radar__core {
+.tracker-atom::before {
   position: absolute;
+  inset: 18%;
   border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 241, 149, 0.2), rgba(153, 69, 255, 0.08) 42%, transparent 72%);
+  content: "";
+  filter: blur(16px);
+  animation: tracker-nucleus-glow 3.6s ease-in-out infinite alternate;
 }
 
-.tracker-radar__ring {
-  border: 1px solid rgba(20, 241, 149, 0.18);
-  inset: 9%;
+.tracker-atom__orbit,
+.tracker-atom__nucleus {
+  position: absolute;
 }
 
-.tracker-radar__ring--middle {
-  inset: 23%;
-  border-color: rgba(153, 69, 255, 0.23);
+.tracker-atom__orbit {
+  top: 50%;
+  left: 50%;
+  width: 92%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(95, 231, 207, 0.4);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(var(--orbit-angle));
+  animation: tracker-orbit-spin var(--orbit-duration) linear infinite;
+  box-shadow: 0 0 16px rgba(20, 241, 149, 0.08), inset 0 0 12px rgba(20, 241, 149, 0.04);
 }
 
-.tracker-radar__ring--inner {
-  inset: 37%;
-  border-color: rgba(20, 241, 149, 0.24);
+.tracker-atom__orbit--one {
+  --orbit-angle: 0deg;
+  --orbit-duration: 14s;
 }
 
-.tracker-radar__sweep {
-  inset: 10%;
-  background: conic-gradient(from 0deg, transparent 0deg, rgba(20, 241, 149, 0.02) 275deg, rgba(20, 241, 149, 0.27) 360deg);
-  animation: tracker-radar-spin 9s linear infinite;
+.tracker-atom__orbit--two {
+  --orbit-angle: 60deg;
+  --orbit-duration: 18s;
+  width: 72%;
+  border-color: rgba(153, 69, 255, 0.32);
+  animation-direction: reverse;
 }
 
-.tracker-radar__core {
-  inset: 42%;
+.tracker-atom__orbit--three {
+  --orbit-angle: 120deg;
+  --orbit-duration: 22s;
+  width: 52%;
+  border-color: rgba(56, 213, 255, 0.22);
+}
+
+.tracker-atom__orbit span {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #14f195;
+  box-shadow: 0 0 8px 3px rgba(20, 241, 149, 0.35), 0 0 22px rgba(20, 241, 149, 0.95);
+  transform: translate(-50%, -50%);
+}
+
+.tracker-atom__orbit--two span {
+  background: #b896ff;
+  box-shadow: 0 0 8px 3px rgba(153, 69, 255, 0.3), 0 0 22px rgba(153, 69, 255, 0.95);
+}
+
+.tracker-atom__orbit--three span {
+  width: 6px;
+  height: 6px;
+  background: #38d5ff;
+  box-shadow: 0 0 8px 3px rgba(56, 213, 255, 0.3), 0 0 20px rgba(56, 213, 255, 0.95);
+}
+
+.tracker-atom__nucleus {
+  width: 26px;
+  height: 26px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(20, 241, 149, 0.3);
-  background: #0a1020;
-  box-shadow: 0 0 32px rgba(20, 241, 149, 0.16);
+  border: 1px solid rgba(20, 241, 149, 0.4);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(20, 241, 149, 0.25), #0a1020 72%);
+  box-shadow: 0 0 18px rgba(20, 241, 149, 0.45), 0 0 46px rgba(20, 241, 149, 0.24), inset 0 0 12px rgba(20, 241, 149, 0.3);
+  animation: tracker-nucleus-pulse 2.8s ease-in-out infinite;
 }
 
-.tracker-radar__blip {
-  position: absolute;
-  width: 5px;
-  height: 5px;
+.tracker-atom__nucleus span {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #14f195;
   box-shadow: 0 0 12px #14f195;
-  animation: tracker-blip 2.6s ease-in-out infinite;
-}
-
-.tracker-radar__blip--one {
-  top: 24%;
-  left: 67%;
-}
-
-.tracker-radar__blip--two {
-  top: 68%;
-  left: 23%;
-  animation-delay: 0.8s;
-}
-
-.tracker-radar__blip--three {
-  top: 76%;
-  left: 70%;
-  animation-delay: 1.5s;
 }
 
 .tracker-entry {
   animation: tracker-entry-in 420ms ease-out both;
 }
 
-@keyframes tracker-radar-spin {
+.tracker-scan-track {
+  position: relative;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tracker-scan-line {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 35%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, transparent, #14f195, #38d5ff, transparent);
+  animation: tracker-scan-sweep 1.8s ease-in-out infinite;
+}
+
+@keyframes tracker-orbit-spin {
   to {
-    transform: rotate(360deg);
+    transform: translate(-50%, -50%) rotate(calc(var(--orbit-angle) + 360deg));
   }
 }
 
-@keyframes tracker-blip {
+@keyframes tracker-nucleus-glow {
+  from {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes tracker-nucleus-pulse {
   0%, 100% {
-    opacity: 0.35;
-    transform: scale(0.8);
+    box-shadow: 0 0 18px rgba(20, 241, 149, 0.4), 0 0 46px rgba(20, 241, 149, 0.2), inset 0 0 12px rgba(20, 241, 149, 0.3);
   }
   50% {
-    opacity: 1;
-    transform: scale(1.5);
+    box-shadow: 0 0 24px rgba(20, 241, 149, 0.6), 0 0 56px rgba(20, 241, 149, 0.32), inset 0 0 14px rgba(20, 241, 149, 0.4);
+  }
+}
+
+@keyframes tracker-scan-sweep {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
   }
 }
 
@@ -237,9 +278,11 @@ main:has(> iframe.snake-arena-frame) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tracker-radar__sweep,
-  .tracker-radar__blip,
-  .tracker-entry {
+  .tracker-atom__orbit,
+  .tracker-atom::before,
+  .tracker-atom__nucleus,
+  .tracker-entry,
+  .tracker-scan-line {
     animation: none;
   }
 }

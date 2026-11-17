@@ -3,7 +3,6 @@
 import { WalletInput } from "@/components/WalletInput";
 import { SecurityWarning } from "@/components/SecurityWarning";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -24,24 +23,6 @@ export default function HomePage() {
         </p>
 
         <WalletInput />
-
-        <div className="mt-8 flex justify-center">
-          <a
-            href="https://pump.fun/coin/FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-white hover:bg-purple-500/30 transition-colors text-sm"
-          >
-            <Image
-              src="https://pump.fun/favicon.ico"
-              alt="Pump Fun"
-              width={16}
-              height={16}
-              className="w-4 h-4 object-contain"
-            />
-            PumpFun: FVohCadz...CQPump
-          </a>
-        </div>
 
         <SecurityWarning />
 

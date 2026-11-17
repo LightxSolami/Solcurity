@@ -8,13 +8,6 @@ export const metadata: Metadata = {
 
 const tools = [
   {
-    name: "PumpFun Analytics",
-    description: "Bonding curve tracking, holders, trades & risk",
-    href: "/tools/pumpfuntool",
-    icon: <PumpFunIcon />,
-    category: "Trading",
-  },
-  {
     name: "Address Validator",
     description: "Validate and decode Solana public keys",
     href: "/tools/address-validator",
@@ -58,9 +51,6 @@ const tools = [
   },
 ];
 
-const pumpFunTool = tools.find((tool) => tool.href === "/tools/pumpfuntool");
-const utilityTools = tools.filter((tool) => tool.href !== "/tools/pumpfuntool");
-
 export default function ToolsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -70,20 +60,6 @@ export default function ToolsPage() {
       </div>
 
       <div className="space-y-10">
-        {pumpFunTool && (
-          <section>
-            <h2 className="text-lg font-semibold text-white/50 uppercase tracking-wider mb-6 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-solana-yellow/20 flex items-center justify-center text-solana-yellow text-sm font-bold">
-                P
-              </span>
-              Trading
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <ToolCard tool={pumpFunTool} />
-            </div>
-          </section>
-        )}
-
         <section>
           <h2 className="text-lg font-semibold text-white/50 uppercase tracking-wider mb-6 flex items-center gap-2">
             <span className="w-8 h-8 rounded-lg bg-solana-purple/20 flex items-center justify-center text-solana-blue text-sm font-bold">
@@ -92,7 +68,7 @@ export default function ToolsPage() {
             Utilities
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {utilityTools.map((tool) => (
+            {tools.map((tool) => (
               <ToolCard key={tool.name} tool={tool} />
             ))}
           </div>
@@ -173,9 +149,6 @@ function ShieldIcon() {
 }
 function BookIcon() {
   return <svg className="w-5 h-5 text-solana-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>;
-}
-function PumpFunIcon() {
-  return <svg className="w-6 h-6 text-solana-yellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>;
 }
 
 function ChartIcon() {
