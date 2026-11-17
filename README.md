@@ -91,6 +91,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 |----------|----------|---------|-------------|
 | `SOLANARPCURL` | No | `https://api.mainnet-beta.solana.com` | Solana mainnet RPC endpoint |
 | `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` | Public app URL (for CORS, etc.) |
+| `NEXT_PUBLIC_PUMPFUN_TOKEN_URL` | No | — | Official Pump.fun coin URL (`https://pump.fun/coin/<mint>`) shown in the dashboard launch card |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `10` | Max scans per IP per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | No | `60` | Rate limit window in seconds |
 | `CACHE_TTL_SECONDS` | No | `300` | Scan result cache TTL |

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 import { NavBar } from "@/components/NavBar";
@@ -35,9 +36,9 @@ const footerGroups = [
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://solcurity.app"),
-  title: "Free Solana Wallet Security Scanner | Solcurity",
+  title: "Solcurity | Solana Security Intelligence",
   description:
-    "Monitor public Solana wallet activity with a live transaction feed, balance changes, and security tools.",
+    "Read-only Solana wallet security and on-chain activity intelligence, grounded in public transaction data.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -91,11 +92,17 @@ export default function RootLayout({
           <div className="site-footer__content mx-auto max-w-7xl">
             <div className="grid gap-10 border-b border-white/[0.08] pb-9 sm:grid-cols-[1.4fr_2fr] lg:grid-cols-[1.6fr_1fr_1fr_1fr]">
               <div className="max-w-sm">
-                <Link href="/" className="text-base font-semibold tracking-tight text-white">
-                  Solcurity
+                <Link href="/" className="inline-flex items-center" aria-label="Solcurity home">
+                  <Image
+                    src="/solcurity-logo.png"
+                    alt="Solcurity"
+                    width={256}
+                    height={79}
+                    className="h-8 w-auto object-contain"
+                  />
                 </Link>
-                <p className="mt-3 text-sm leading-6 text-white/45">
-                  Read-only tools for exploring public Solana wallet and token activity.
+                <p className="mt-3 max-w-xs text-sm leading-6 text-white/45">
+                  Solana wallet security and activity intelligence. Read-only by design.
                 </p>
               </div>
               {footerGroups.map((group) => (

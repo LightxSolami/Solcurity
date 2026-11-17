@@ -338,28 +338,28 @@ export function WalletTracker() {
       <div className="tracker-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <div className="relative mx-auto max-w-7xl">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-solana-blue/20 bg-solana-blue/5 px-3 py-1.5 text-xs font-medium uppercase tracking-[0.18em] text-solana-blue">
+          <div className="inline-flex items-center gap-2 rounded-full border border-solana-blue/20 bg-solana-blue/[0.06] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-solana-blue">
             <span className={`h-2 w-2 rounded-full ${isTracking ? "animate-pulse bg-solana-blue" : "bg-white/30"}`} />
-            Solana mainnet monitor
+            Solana mainnet · read only
           </div>
-          <div className="flex items-center gap-2 text-xs text-white/40">
-            <span className="h-px w-8 bg-solana-purple/50" />
-            READ-ONLY · PUBLIC CHAIN DATA
+          <div className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.14em] text-white/35">
+            <span className="h-px w-8 bg-white/15" />
+            No custody · Public data
           </div>
         </div>
 
         <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <div className="py-2">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.35em] text-solana-purple">
-              Wallet scanner / 01
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-solana-blue">
+              Wallet security · Live monitoring
             </p>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.06] tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Scan, then follow
-              <span className="tracker-gradient block">the on-chain pulse.</span>
+              Security starts with
+              <span className="tracker-gradient block">visibility.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">
-              Run a live security assessment, review real findings, and monitor confirmed SOL and token
-              movements for any public Solana wallet.
+              Scan any public Solana wallet, review the evidence, then follow confirmed SOL and token
+              activity as it happens.
             </p>
           </div>
 
@@ -386,7 +386,7 @@ export function WalletTracker() {
               maxLength={44}
               autoComplete="off"
               spellCheck={false}
-              className="w-full rounded-xl border border-white/10 bg-[#080b18]/80 px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/25 focus:border-solana-blue/50 focus:ring-2 focus:ring-solana-blue/10"
+              className="w-full rounded-xl border border-white/10 bg-solana-dark/80 px-4 py-3.5 font-mono text-sm text-white outline-none transition placeholder:text-white/25 focus:border-solana-blue/50 focus:ring-2 focus:ring-solana-blue/10"
               aria-label="Solana wallet address"
             />
           </label>
@@ -529,7 +529,7 @@ export function WalletTracker() {
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <div className="hidden items-center gap-3 text-[10px] text-white/40 md:flex" aria-label="Transaction signal legend">
-                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#14f195] shadow-[0_0_8px_rgba(20,241,149,0.65)]" />Confirmed</span>
+                <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#62c99b] shadow-[0_0_8px_rgba(98,201,155,0.45)]" />Confirmed</span>
                 <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-risk-critical shadow-[0_0_8px_rgba(255,60,90,0.55)]" />Flagged / failed</span>
                 <span className="flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-amber-300" />Unverified</span>
               </div>
@@ -671,14 +671,14 @@ function ActivityPoint({
     flagged: "bg-risk-critical shadow-[0_0_12px_rgba(255,60,90,0.8)]",
     failed: "bg-risk-critical shadow-[0_0_12px_rgba(255,60,90,0.8)]",
     review: "bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.65)]",
-    confirmed: "bg-[#14f195] shadow-[0_0_12px_rgba(20,241,149,0.8)]",
+    confirmed: "bg-[#62c99b] shadow-[0_0_10px_rgba(98,201,155,0.5)]",
     unknown: "bg-amber-300/70",
   }[signal];
   const statusColor = {
     flagged: "text-risk-critical",
     failed: "text-risk-critical",
     review: "text-amber-200",
-    confirmed: "text-[#14f195]",
+    confirmed: "text-[#62c99b]",
     unknown: "text-amber-200/75",
   }[signal];
   return (
@@ -709,7 +709,7 @@ function ActivityPoint({
           </span>
           <span className="shrink-0 text-right">
             {activity.detailsAvailable && activity.solChange !== 0 ? (
-              <span className={`block font-mono text-xs ${activity.solChange > 0 ? "text-[#14f195]" : "text-white/70"}`}>
+              <span className={`block font-mono text-xs ${activity.solChange > 0 ? "text-[#62c99b]" : "text-white/70"}`}>
                 {activity.solChange > 0 ? "+" : ""}{formatAmount(activity.solChange, 4)} SOL
               </span>
             ) : (
@@ -744,14 +744,14 @@ function ActivityDetails({
     flagged: "border-risk-critical/30 bg-risk-critical/10 text-risk-critical",
     failed: "border-risk-critical/30 bg-risk-critical/10 text-risk-critical",
     review: "border-amber-300/25 bg-amber-300/5 text-amber-200",
-    confirmed: "border-[#14f195]/25 bg-[#14f195]/5 text-[#14f195]",
+    confirmed: "border-[#62c99b]/25 bg-[#62c99b]/5 text-[#62c99b]",
     unknown: "border-amber-300/20 bg-amber-300/[0.04] text-amber-200/75",
   };
   const incoming = isIncoming(activity);
   const outgoing = isOutgoing(activity);
 
   return (
-    <aside className="tracker-detail-panel rounded-xl border border-white/[0.08] bg-[#090b17]/70 p-4 sm:p-5" aria-label="Selected transaction details">
+    <aside className="tracker-detail-panel rounded-xl border border-white/[0.08] bg-solana-dark/70 p-4 sm:p-5" aria-label="Selected transaction details">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">Selected transaction</p>
@@ -827,7 +827,7 @@ function ActivityDetails({
                 >
                   {truncate(change.mint, 8, 6)}
                 </a>
-                <span className={`font-mono ${change.amount > 0 ? "text-[#14f195]" : "text-white/70"}`}>
+                <span className={`font-mono ${change.amount > 0 ? "text-[#62c99b]" : "text-white/70"}`}>
                   {change.amount > 0 ? "+" : ""}{formatAmount(change.amount)}
                 </span>
               </li>

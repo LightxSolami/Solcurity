@@ -47,9 +47,9 @@ function formatAmount(value: number, digits = 4) {
 function eventColor(activity: WalletActivity) {
   if (!activity.success) return "#ff4d6d";
   if (!activity.detailsAvailable) return "#fbbf24";
-  if (isIncoming(activity) && !isOutgoing(activity)) return "#14f195";
-  if (isOutgoing(activity) && !isIncoming(activity)) return "#9b8cff";
-  return "#65a9ff";
+  if (isIncoming(activity) && !isOutgoing(activity)) return "#62c99b";
+  if (isOutgoing(activity) && !isIncoming(activity)) return "#87958f";
+  return "#b1c2b9";
 }
 
 export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: string }) {
@@ -183,11 +183,11 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
   });
 
   return (
-    <div className="min-h-screen bg-[#050515] px-4 py-8 text-white sm:px-6 lg:py-12">
+    <div className="min-h-screen bg-solana-dark px-4 py-8 text-white sm:px-6 lg:py-12">
       <div className="mx-auto max-w-7xl">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-solana-purple">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-solana-blue">
               On-chain activity / live map
             </p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -198,8 +198,8 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
               unavailable transaction details stay clearly marked.
             </p>
           </div>
-          <span className="inline-flex items-center gap-2 rounded-full border border-[#14f195]/20 bg-[#14f195]/[0.05] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#14f195]/80">
-            <span className={`h-1.5 w-1.5 rounded-full ${isTracking ? "animate-pulse bg-[#14f195]" : "bg-white/30"}`} />
+          <span className="inline-flex items-center gap-2 rounded-full border border-solana-blue/20 bg-solana-blue/[0.05] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-solana-blue/80">
+            <span className={`h-1.5 w-1.5 rounded-full ${isTracking ? "animate-pulse bg-solana-blue" : "bg-white/30"}`} />
             {isTracking ? "Live · 15s refresh" : "Read-only"}
           </span>
         </div>
@@ -216,7 +216,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
               maxLength={44}
               autoComplete="off"
               spellCheck={false}
-              className="w-full rounded-xl border border-white/10 bg-[#080b18]/80 px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:text-white/25 focus:border-solana-blue/50 focus:ring-2 focus:ring-solana-blue/10"
+              className="w-full rounded-xl border border-white/10 bg-solana-dark/80 px-4 py-3 font-mono text-sm text-white outline-none transition placeholder:text-white/25 focus:border-solana-blue/50 focus:ring-2 focus:ring-solana-blue/10"
               aria-label="Solana wallet address"
             />
           </label>
@@ -319,7 +319,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto bg-[#070915]">
+              <div className="overflow-x-auto bg-solana-dark">
                 <svg
                   viewBox="0 0 980 500"
                   className="block h-[390px] min-w-[760px] w-full sm:h-[480px]"
@@ -331,13 +331,13 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
                       <path d="M 48 0 L 0 0 0 48" fill="none" stroke="rgba(255,255,255,0.035)" strokeWidth="1" />
                     </pattern>
                     <radialGradient id="wallet-flow-glow">
-                      <stop offset="0%" stopColor="#9945ff" stopOpacity=".24" />
-                      <stop offset="100%" stopColor="#9945ff" stopOpacity="0" />
+                      <stop offset="0%" stopColor="#62c99b" stopOpacity=".2" />
+                      <stop offset="100%" stopColor="#62c99b" stopOpacity="0" />
                     </radialGradient>
                   </defs>
                   <rect width="980" height="500" fill="url(#wallet-flow-grid)" />
-                  <circle cx="490" cy="250" r="112" fill="none" stroke="rgba(153,69,255,0.12)" strokeDasharray="3 8" />
-                  <circle cx="490" cy="250" r="202" fill="none" stroke="rgba(153,69,255,0.08)" strokeDasharray="2 10" />
+                  <circle cx="490" cy="250" r="112" fill="none" stroke="rgba(98,201,155,0.13)" strokeDasharray="3 8" />
+                  <circle cx="490" cy="250" r="202" fill="none" stroke="rgba(98,201,155,0.08)" strokeDasharray="2 10" />
 
                   {plottedActivities.map(({ activity, x, y }) => (
                     <line
@@ -394,8 +394,8 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
                   })}
 
                   <circle cx="490" cy="250" r="58" fill="url(#wallet-flow-glow)" />
-                  <circle cx="490" cy="250" r="35" fill="#17112d" stroke="#9945ff" strokeOpacity=".75" strokeWidth="2" />
-                  <circle cx="490" cy="250" r="5" fill="#14f195" />
+                  <circle cx="490" cy="250" r="35" fill="#15201b" stroke="#62c99b" strokeOpacity=".75" strokeWidth="2" />
+                  <circle cx="490" cy="250" r="5" fill="#62c99b" />
                   <text x="490" y="304" textAnchor="middle" className="fill-white/75 font-mono text-[10px]">
                     {shortAddress(watchedAddress, 6, 5)}
                   </text>
@@ -407,9 +407,9 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
 
               <div className="grid gap-4 border-t border-white/[0.07] p-4 sm:p-5 lg:grid-cols-[minmax(0,1.3fr)_minmax(260px,0.7fr)]">
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[10px] text-white/45" aria-label="Flow map legend">
-                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#14f195]" />Incoming</span>
-                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#9b8cff]" />Outgoing</span>
-                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#65a9ff]" />Interaction</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#62c99b]" />Incoming</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#87958f]" />Outgoing</span>
+                  <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#b1c2b9]" />Interaction</span>
                   <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-amber-300" />Details unavailable</span>
                   <span className="inline-flex items-center gap-1.5"><i className="h-2 w-2 rounded-full bg-[#ff4d6d]" />Failed</span>
                 </div>
@@ -432,7 +432,7 @@ export function WalletFlowTracker({ initialAddress = "" }: { initialAddress?: st
                         !selectedActivity.success
                           ? "border-risk-critical/25 bg-risk-critical/10 text-risk-critical"
                           : selectedActivity.detailsAvailable
-                            ? "border-[#14f195]/20 bg-[#14f195]/[0.05] text-[#14f195]"
+                            ? "border-solana-blue/20 bg-solana-blue/[0.05] text-solana-blue"
                             : "border-amber-300/20 bg-amber-300/[0.05] text-amber-200"
                       }`}>
                         {!selectedActivity.success

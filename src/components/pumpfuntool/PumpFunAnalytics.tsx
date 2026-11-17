@@ -50,7 +50,7 @@ interface Analytics {
     holders: Holder[];
     error?: string;
   };
-  liquidity: { sol: number; tokens: number };
+  liquidity: { sol: number; tokens: number; usd: number };
   recentTrades: Trade[];
 }
 
@@ -78,6 +78,15 @@ function formatPriceUsd(value: number | null): string {
     })}`;
   }
   return `$${formatCompact(value)}`;
+}
+
+function formatLiquidityUsd(value: number): string {
+  return `${new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)} USD`;
 }
 
 function Metric({ label, value, detail }: { label: string; value: string; detail?: string }) {
@@ -158,6 +167,15 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
   }
 
   const { token, price, bondingCurve, holders, liquidity, recentTrades } = analytics;
+  const liquidityMetricValue = liquidity.usd > 0
+    ? formatLiquidityUsd(liquidity.usd)
+    : liquidity.sol > 0
+      ? `${liquidity.sol.toFixed(4)} SOL`
+      : "N/A";
+  const liquidityMetricDetail = [
+    liquidity.sol > 0 ? `${liquidity.sol.toFixed(4)} SOL` : null,
+    liquidity.tokens > 0 ? `${formatCompact(liquidity.tokens)} tokens` : null,
+  ].filter(Boolean).join(" · ");
   const tabs: Array<{ id: AnalyticsTab; label: string }> = [
     { id: "overview", label: "Overview" },
     { id: "holders", label: "Top holders" },
@@ -207,7 +225,7 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4" aria-label="Token metrics">
         <Metric label="Price" value={formatPriceUsd(price.usd)} detail={`${price.sol.toFixed(8)} SOL`} />
         <Metric label="Market cap" value={price.marketCapUsd === null ? "N/A" : `$${formatCompact(price.marketCapUsd)}`} detail={`${formatCompact(price.marketCap)} SOL`} />
-        <Metric label="Liquidity" value={`${liquidity.sol.toFixed(4)} SOL`} detail={`${formatCompact(liquidity.tokens)} tokens`} />
+        <Metric label="Liquidity" value={liquidityMetricValue} detail={liquidityMetricDetail || undefined} />
         <Metric label="Top accounts" value={holders.available ? holders.topAccountCount.toString() : "N/A"} detail={holders.available ? `Top 10 hold ${holders.top10Percentage.toFixed(2)}%` : "RPC holder data unavailable"} />
       </section>
 
@@ -240,8 +258,9 @@ export function PumpFunAnalytics({ mint, rpcUrl }: PumpFunAnalyticsProps) {
               </div>
               <div className="space-y-3">
                 <h3 className="text-white font-semibold">Liquidity</h3>
-                <p className="text-white/60">SOL reserve: <span className="text-white">{liquidity.sol.toFixed(4)} SOL</span></p>
-                <p className="text-white/60">Token reserve: <span className="text-white">{formatCompact(liquidity.tokens)}</span></p>
+                <p className="text-white/60">Market liquidity: <span className="text-white">{liquidity.usd > 0 ? formatLiquidityUsd(liquidity.usd) : "N/A"}</span></p>
+                <p className="text-white/60">SOL reserve: <span className="text-white">{liquidity.sol > 0 ? `${liquidity.sol.toFixed(4)} SOL` : "Not quoted in SOL"}</span></p>
+                <p className="text-white/60">Token reserve: <span className="text-white">{liquidity.tokens > 0 ? formatCompact(liquidity.tokens) : "N/A"}</span></p>
                 <p className="text-white/60">Market capitalization: <span className="text-white">{price.marketCapUsd === null ? "N/A" : `$${formatCompact(price.marketCapUsd)}`}</span></p>
               </div>
             </div>

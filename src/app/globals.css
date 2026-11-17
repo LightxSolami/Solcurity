@@ -4,23 +4,20 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 10, 10, 26;
-  --background-end-rgb: 15, 15, 42;
+  --background-start-rgb: 8, 12, 16;
+  --background-end-rgb: 13, 19, 22;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background:
+    radial-gradient(ellipse at 50% -18rem, rgba(98, 201, 155, 0.075), transparent 48rem),
+    linear-gradient(180deg, rgb(var(--background-start-rgb)), rgb(var(--background-end-rgb)));
   min-height: 100vh;
 }
 
 main:has(> iframe.snake-arena-frame) {
-  background-color: #05030c;
+  background-color: #080c10;
 }
 
 .site-footer {
@@ -28,7 +25,7 @@ main:has(> iframe.snake-arena-frame) {
   isolation: isolate;
   overflow: hidden;
   border-color: rgba(255, 255, 255, 0.08);
-  background: #070812;
+  background: #090e12;
 }
 
 .site-footer::before {
@@ -36,8 +33,8 @@ main:has(> iframe.snake-arena-frame) {
   z-index: 0;
   inset: 0;
   background:
-    radial-gradient(ellipse at 18% 55%, rgba(20, 241, 149, 0.035), transparent 35%),
-    radial-gradient(ellipse at 78% 45%, rgba(153, 69, 255, 0.05), transparent 38%);
+    radial-gradient(ellipse at 18% 55%, rgba(98, 201, 155, 0.04), transparent 35%),
+    radial-gradient(ellipse at 78% 45%, rgba(134, 153, 144, 0.035), transparent 38%);
   content: "";
   pointer-events: none;
 }
@@ -79,14 +76,14 @@ main:has(> iframe.snake-arena-frame) {
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(ellipse at 75% 4%, rgba(153, 69, 255, 0.14), transparent 34rem),
-    radial-gradient(ellipse at 12% 32%, rgba(20, 241, 149, 0.06), transparent 26rem),
-    #070812;
+    radial-gradient(ellipse at 78% 2%, rgba(98, 201, 155, 0.09), transparent 34rem),
+    radial-gradient(ellipse at 12% 35%, rgba(134, 153, 144, 0.045), transparent 26rem),
+    #090e12;
 }
 
 .tracker-grid {
   z-index: -1;
-  opacity: 0.2;
+  opacity: 0.13;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
@@ -95,35 +92,35 @@ main:has(> iframe.snake-arena-frame) {
 }
 
 .tracker-gradient {
-  background: linear-gradient(100deg, #fff 5%, #14f195 46%, #9945ff 94%);
+  background: linear-gradient(100deg, #fff 8%, #8de0b8 72%, #b8d7c7 100%);
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 .tracker-panel {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(145deg, rgba(20, 22, 43, 0.86), rgba(9, 10, 23, 0.88));
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.16);
-  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  background: linear-gradient(145deg, rgba(22, 30, 34, 0.88), rgba(11, 16, 20, 0.94));
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(16px);
 }
 
 .tracker-button {
-  background: linear-gradient(110deg, #14f195, #94ffd0);
-  box-shadow: 0 0 24px rgba(20, 241, 149, 0.14);
+  background: linear-gradient(110deg, #75d8aa, #a5e5c4);
+  box-shadow: 0 8px 24px rgba(68, 166, 119, 0.14);
 }
 
 .tracker-atom {
   position: relative;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(20, 241, 149, 0.14), rgba(153, 69, 255, 0.07) 42%, transparent 72%);
-  filter: drop-shadow(0 0 24px rgba(20, 241, 149, 0.1));
+  background: radial-gradient(circle, rgba(98, 201, 155, 0.12), rgba(134, 153, 144, 0.035) 42%, transparent 72%);
+  filter: drop-shadow(0 0 24px rgba(98, 201, 155, 0.08));
 }
 
 .tracker-atom::before {
   position: absolute;
   inset: 18%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(20, 241, 149, 0.2), rgba(153, 69, 255, 0.08) 42%, transparent 72%);
+  background: radial-gradient(circle, rgba(98, 201, 155, 0.16), rgba(134, 153, 144, 0.045) 42%, transparent 72%);
   content: "";
   filter: blur(16px);
   animation: tracker-nucleus-glow 3.6s ease-in-out infinite alternate;
@@ -139,11 +136,11 @@ main:has(> iframe.snake-arena-frame) {
   left: 50%;
   width: 92%;
   aspect-ratio: 1;
-  border: 1px solid rgba(95, 231, 207, 0.4);
+  border: 1px solid rgba(124, 203, 164, 0.32);
   border-radius: 50%;
   transform: translate(-50%, -50%) rotate(var(--orbit-angle));
   animation: tracker-orbit-spin var(--orbit-duration) linear infinite;
-  box-shadow: 0 0 16px rgba(20, 241, 149, 0.08), inset 0 0 12px rgba(20, 241, 149, 0.04);
+  box-shadow: 0 0 16px rgba(98, 201, 155, 0.06), inset 0 0 12px rgba(98, 201, 155, 0.035);
 }
 
 .tracker-atom__orbit--one {
@@ -155,7 +152,7 @@ main:has(> iframe.snake-arena-frame) {
   --orbit-angle: 60deg;
   --orbit-duration: 18s;
   width: 72%;
-  border-color: rgba(153, 69, 255, 0.32);
+  border-color: rgba(164, 181, 172, 0.24);
   animation-direction: reverse;
 }
 
@@ -163,7 +160,7 @@ main:has(> iframe.snake-arena-frame) {
   --orbit-angle: 120deg;
   --orbit-duration: 22s;
   width: 52%;
-  border-color: rgba(56, 213, 255, 0.22);
+  border-color: rgba(125, 161, 145, 0.2);
 }
 
 .tracker-atom__orbit span {
@@ -173,21 +170,21 @@ main:has(> iframe.snake-arena-frame) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #14f195;
-  box-shadow: 0 0 8px 3px rgba(20, 241, 149, 0.35), 0 0 22px rgba(20, 241, 149, 0.95);
+  background: #75d8aa;
+  box-shadow: 0 0 8px 3px rgba(98, 201, 155, 0.24), 0 0 18px rgba(98, 201, 155, 0.65);
   transform: translate(-50%, -50%);
 }
 
 .tracker-atom__orbit--two span {
-  background: #b896ff;
-  box-shadow: 0 0 8px 3px rgba(153, 69, 255, 0.3), 0 0 22px rgba(153, 69, 255, 0.95);
+  background: #b1c2b9;
+  box-shadow: 0 0 8px 3px rgba(164, 181, 172, 0.18), 0 0 18px rgba(164, 181, 172, 0.5);
 }
 
 .tracker-atom__orbit--three span {
   width: 6px;
   height: 6px;
-  background: #38d5ff;
-  box-shadow: 0 0 8px 3px rgba(56, 213, 255, 0.3), 0 0 20px rgba(56, 213, 255, 0.95);
+  background: #8eb6a1;
+  box-shadow: 0 0 8px 3px rgba(125, 161, 145, 0.18), 0 0 16px rgba(125, 161, 145, 0.48);
 }
 
 .tracker-atom__nucleus {
@@ -195,10 +192,10 @@ main:has(> iframe.snake-arena-frame) {
   height: 26px;
   display: grid;
   place-items: center;
-  border: 1px solid rgba(20, 241, 149, 0.4);
+  border: 1px solid rgba(98, 201, 155, 0.32);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(20, 241, 149, 0.25), #0a1020 72%);
-  box-shadow: 0 0 18px rgba(20, 241, 149, 0.45), 0 0 46px rgba(20, 241, 149, 0.24), inset 0 0 12px rgba(20, 241, 149, 0.3);
+  background: radial-gradient(circle, rgba(98, 201, 155, 0.2), #10191a 72%);
+  box-shadow: 0 0 18px rgba(98, 201, 155, 0.3), 0 0 40px rgba(98, 201, 155, 0.16), inset 0 0 12px rgba(98, 201, 155, 0.2);
   animation: tracker-nucleus-pulse 2.8s ease-in-out infinite;
 }
 
@@ -206,8 +203,8 @@ main:has(> iframe.snake-arena-frame) {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #14f195;
-  box-shadow: 0 0 12px #14f195;
+  background: #75d8aa;
+  box-shadow: 0 0 10px rgba(98, 201, 155, 0.7);
 }
 
 .tracker-entry {
@@ -227,7 +224,7 @@ main:has(> iframe.snake-arena-frame) {
   inset: 0 auto 0 0;
   width: 35%;
   border-radius: inherit;
-  background: linear-gradient(90deg, transparent, #14f195, #38d5ff, transparent);
+  background: linear-gradient(90deg, transparent, #75d8aa, #b1c2b9, transparent);
   animation: tracker-scan-sweep 1.8s ease-in-out infinite;
 }
 
@@ -250,10 +247,10 @@ main:has(> iframe.snake-arena-frame) {
 
 @keyframes tracker-nucleus-pulse {
   0%, 100% {
-    box-shadow: 0 0 18px rgba(20, 241, 149, 0.4), 0 0 46px rgba(20, 241, 149, 0.2), inset 0 0 12px rgba(20, 241, 149, 0.3);
+    box-shadow: 0 0 18px rgba(98, 201, 155, 0.28), 0 0 40px rgba(98, 201, 155, 0.14), inset 0 0 12px rgba(98, 201, 155, 0.2);
   }
   50% {
-    box-shadow: 0 0 24px rgba(20, 241, 149, 0.6), 0 0 56px rgba(20, 241, 149, 0.32), inset 0 0 14px rgba(20, 241, 149, 0.4);
+    box-shadow: 0 0 22px rgba(98, 201, 155, 0.42), 0 0 48px rgba(98, 201, 155, 0.2), inset 0 0 14px rgba(98, 201, 155, 0.27);
   }
 }
 

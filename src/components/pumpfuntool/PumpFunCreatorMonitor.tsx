@@ -34,7 +34,7 @@ interface TokenAnalytics {
     marketPairAddress?: string;
     dataSource?: "pumpfun" | "dexscreener" | "geckoterminal" | "onchain";
   };
-  liquidity: { sol: number; tokens: number };
+  liquidity: { sol: number; tokens: number; usd: number };
   bondingCurve: { available: boolean; progress: number | null };
   recentTrades: TokenTrade[];
 }
@@ -61,6 +61,15 @@ interface ObservedTrader {
 
 function truncate(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-5)}`;
+}
+
+function formatLiquidityUsd(value: number) {
+  return `${new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value)} USD`;
 }
 
 function getObservedTraders(trades: TokenTrade[]): ObservedTrader[] {
@@ -254,7 +263,11 @@ export function PumpFunCreatorMonitor() {
             <Metric label="Token" value={`${analytics.token.name} (${analytics.token.symbol})`} />
             <Metric
               label="Market liquidity"
-              value={analytics.liquidity.sol > 0 ? `${analytics.liquidity.sol.toFixed(3)} SOL` : "Unavailable"}
+              value={analytics.liquidity.usd > 0
+                ? formatLiquidityUsd(analytics.liquidity.usd)
+                : analytics.liquidity.sol > 0
+                  ? `${analytics.liquidity.sol.toFixed(3)} SOL`
+                  : "Unavailable"}
             />
             <Metric
               label={analytics.token.dataSource === "geckoterminal" && analytics.token.marketPairAddress

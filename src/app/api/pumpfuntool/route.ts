@@ -29,6 +29,7 @@ interface PumpFunToken {
   dataSource?: "pumpfun" | "dexscreener" | "geckoterminal" | "onchain";
   marketLiquiditySol?: number;
   marketLiquidityTokens?: number;
+  marketLiquidityUsd?: number;
   marketPriceSol?: number | null;
   marketPriceUsd?: number | null;
   marketCapSol?: number | null;
@@ -68,6 +69,7 @@ interface PumpFunAnalytics {
   liquidity: {
     sol: number;
     tokens: number;
+    usd: number;
   };
   creator: {
     address: string;
@@ -426,6 +428,7 @@ async function fetchPumpFunTokenDataFromDexScreener(mint: string): Promise<PumpF
     dataSource: "dexscreener",
     marketLiquiditySol: quoteIsSol ? getNumber(liquidity, "quote") : 0,
     marketLiquidityTokens: getNumber(liquidity, "base"),
+    marketLiquidityUsd: getNumber(liquidity, "usd"),
     marketPriceSol: priceSol > 0 ? priceSol : null,
     marketPriceUsd: priceUsd > 0 ? priceUsd : null,
     marketCapSol,
@@ -458,7 +461,9 @@ async function enrichWithGeckoTerminalData(
   mint: string
 ): Promise<PumpFunToken> {
   const needsMetadata = token.name === "Unknown token" || token.symbol === "UNKNOWN";
-  const needsPool = !token.marketPairAddress;
+  const hasLiquidity =
+    (token.marketLiquidityUsd ?? 0) > 0 || (token.marketLiquiditySol ?? 0) > 0;
+  const needsPool = !token.marketPairAddress || !hasLiquidity;
   if (!needsMetadata && !needsPool) return token;
 
   const [tokenResponse, poolsResponse] = await Promise.all([
@@ -555,6 +560,9 @@ async function enrichWithGeckoTerminalData(
     marketLiquidityTokens: priceUsd > 0
       ? reserveUsd / (2 * priceUsd)
       : enriched.marketLiquidityTokens ?? 0,
+    marketLiquidityUsd: reserveUsd > 0
+      ? reserveUsd
+      : enriched.marketLiquidityUsd ?? 0,
     marketPriceSol: priceSol > 0 ? priceSol : enriched.marketPriceSol,
     marketPriceUsd: priceUsd > 0 ? priceUsd : enriched.marketPriceUsd,
     marketCapSol: marketCapUsd > 0 && priceUsd > 0 && priceSol > 0
@@ -1083,6 +1091,7 @@ export async function POST(request: NextRequest) {
               : token.curveAvailable && !token.complete
               ? token.realTokenReserves / 1e6
               : token.marketLiquidityTokens ?? 0,
+            usd: token.marketLiquidityUsd ?? 0,
           },
           creator: {
             address: token.creator,
