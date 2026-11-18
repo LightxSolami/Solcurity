@@ -1,5 +1,13 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL, type AccountInfo } from "@solana/web3.js";
 import { groq } from "@/lib/groq";
+import {
+  DEFAULT_SVM_RPC_URL,
+  DEFAULT_LOCAL_RPC_URL,
+  getSvmNetworkLabel,
+  getSvmRpcCandidates,
+  isSupportedSvmRpcUrl,
+  SVM_GENESIS_HASHES,
+} from "@/lib/svm-network";
 
 export interface SvmAccountInfo {
   pubkey: string;
@@ -17,10 +25,11 @@ export interface SvmTransactionInfo {
   signature: string;
   slot: number;
   blockTime: number | null;
+  detailsAvailable: boolean;
   meta: {
-    fee: number;
-    success: boolean;
-    logMessages: string[];
+    fee: number | null;
+    success: boolean | null;
+    logMessages: string[] | null;
   };
 }
 
@@ -49,33 +58,132 @@ export interface EpochInfo {
   blockHeight: number;
 }
 
-const DEFAULT_LOCAL_RPC = "http://127.0.0.1:8899";
-const DEVNET_RPC = "https://api.devnet.solana.com";
-const TESTNET_RPC = "https://api.testnet.solana.com";
-const ALCHEMY_RPC = "https://solana-mainnet.g.alchemy.com/v2/demo";
-const ANKR_RPC = "https://rpc.ankr.com/solana";
-const DRPC_RPC = "https://solana.drpc.org";
+const connections = new Map<string, Connection>();
+const svmEndpointHealth = new Map<string, {
+  lastChecked: string;
+  lastSuccess: string | null;
+  consecutiveFailures: number;
+  available: boolean;
+  cooldownUntil: number;
+}>();
+const verifiedSvmEndpoints = new Map<string, number>();
 
-const RPC_FALLBACKS = [DEVNET_RPC, TESTNET_RPC, ALCHEMY_RPC, ANKR_RPC, DRPC_RPC];
-
-let svmConnection: Connection | null = null;
-let currentUrl: string = DEFAULT_LOCAL_RPC;
-
-export function getSvmConnection(rpcUrl: string = DEFAULT_LOCAL_RPC): Connection {
-  if (!svmConnection || currentUrl !== rpcUrl) {
-    currentUrl = rpcUrl;
-    svmConnection = new Connection(rpcUrl, {
+export function getSvmConnection(rpcUrl: string = DEFAULT_LOCAL_RPC_URL): Connection {
+  let connection = connections.get(rpcUrl);
+  if (!connection) {
+    connection = new Connection(rpcUrl, {
       commitment: "confirmed",
       confirmTransactionInitialTimeout: 30000,
+      fetchMiddleware: async (url, options, fetch) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        try {
+          return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
     });
+    connections.set(rpcUrl, connection);
   }
-  return svmConnection;
+  return connection;
 }
 
-export async function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<boolean> {
+export async function withSvmRpc<T>(
+  rpcUrl: string,
+  operation: (connection: Connection) => Promise<T>
+): Promise<{ value: T; endpoint: string }> {
+  let lastError: unknown;
+  const candidates = getSvmRpcCandidates(rpcUrl);
+  const now = Date.now();
+  const availableEndpoints = candidates.filter(
+    (endpoint) => (svmEndpointHealth.get(endpoint)?.cooldownUntil || 0) <= now
+  );
+  const endpoints = availableEndpoints.length > 0
+    ? availableEndpoints
+    : candidates
+      .slice()
+      .sort((a, b) =>
+        (svmEndpointHealth.get(a)?.cooldownUntil || 0) -
+        (svmEndpointHealth.get(b)?.cooldownUntil || 0)
+      )
+      .slice(0, 1);
+  for (let index = 0; index < endpoints.length; index++) {
+    const endpoint = endpoints[index];
+    try {
+      const connection = getSvmConnection(endpoint);
+      const network = getSvmNetworkLabel(rpcUrl);
+      const expectedGenesis = network === "Custom RPC (network unverified)" || network === "Local Validator"
+        ? null
+        : SVM_GENESIS_HASHES[network];
+      if (expectedGenesis && (verifiedSvmEndpoints.get(endpoint) || 0) < Date.now()) {
+        const genesisHash = await connection.getGenesisHash();
+        if (genesisHash !== expectedGenesis) {
+          throw new Error(`RPC network mismatch: expected ${network}.`);
+        }
+        verifiedSvmEndpoints.set(endpoint, Date.now() + 5 * 60 * 1000);
+      }
+      const value = await operation(connection);
+      const now = new Date().toISOString();
+      svmEndpointHealth.set(endpoint, {
+        lastChecked: now,
+        lastSuccess: now,
+        consecutiveFailures: 0,
+        available: true,
+        cooldownUntil: 0,
+      });
+      return { value, endpoint };
+    } catch (error) {
+      lastError = error;
+      const previous = svmEndpointHealth.get(endpoint);
+      svmEndpointHealth.set(endpoint, {
+        lastChecked: new Date().toISOString(),
+        lastSuccess: previous?.lastSuccess || null,
+        consecutiveFailures: (previous?.consecutiveFailures || 0) + 1,
+        available: false,
+        cooldownUntil: Date.now() + 30_000,
+      });
+      if (index + 1 < endpoints.length) {
+        await new Promise((resolve) => setTimeout(resolve, Math.min(250 * 2 ** index, 2000)));
+      }
+    }
+  }
+
+  console.error(`All ${getSvmNetworkLabel(rpcUrl)} RPC endpoints failed:`, lastError);
+  throw new Error(`All configured ${getSvmNetworkLabel(rpcUrl)} RPC endpoints failed.`);
+}
+
+export async function getSvmHealth(rpcUrl: string) {
+  const startedAt = Date.now();
+  const result = await withSvmRpc(rpcUrl, (connection) => connection.getEpochInfo());
+  return {
+    running: true,
+    endpoint: result.endpoint,
+    network: getSvmNetworkLabel(rpcUrl),
+    latencyMs: Date.now() - startedAt,
+    endpoints: getSvmRpcCandidates(rpcUrl).map((endpoint) => ({
+      endpoint,
+      ...(svmEndpointHealth.get(endpoint) || {
+        lastChecked: null,
+        lastSuccess: null,
+        consecutiveFailures: 0,
+        available: false,
+        cooldownUntil: 0,
+      }),
+    })),
+    epoch: {
+      slotIndex: result.value.slotIndex,
+      slotInEpoch: result.value.slotsInEpoch,
+      epoch: result.value.epoch,
+      transactionCount: result.value.transactionCount || 0,
+      blockHeight: result.value.blockHeight || 0,
+    },
+  };
+}
+
+export async function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC_URL): Promise<boolean> {
   try {
-    const connection = getSvmConnection(rpcUrl);
-    await connection.getEpochInfo();
+    await getSvmHealth(rpcUrl);
     return true;
   } catch {
     return false;
@@ -83,6 +191,9 @@ export async function isSvmRunning(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<
 }
 
 export async function testRpcEndpoint(rpcUrl: string): Promise<{ ok: boolean; latency: number; error?: string }> {
+  if (!isSupportedSvmRpcUrl(rpcUrl)) {
+    return { ok: false, latency: 0, error: "Unsupported RPC endpoint." };
+  }
   try {
     const start = Date.now();
     const connection = new Connection(rpcUrl, {
@@ -97,28 +208,18 @@ export async function testRpcEndpoint(rpcUrl: string): Promise<{ ok: boolean; la
 }
 
 export async function findWorkingRpc(): Promise<string> {
-  const currentUrlTest = await testRpcEndpoint(currentUrl);
-  if (currentUrlTest.ok) {
-    return currentUrl;
-  }
-
-  for (const fallback of RPC_FALLBACKS) {
-    const result = await testRpcEndpoint(fallback);
-    if (result.ok) {
-      return fallback;
-    }
-  }
-
-  return DEFAULT_LOCAL_RPC;
+  const result = await withSvmRpc(DEFAULT_SVM_RPC_URL, async (connection) => {
+    await connection.getEpochInfo();
+  });
+  return result.endpoint;
 }
 
 export async function getAccountInfo(
   pubkey: string,
-  rpcUrl: string = DEFAULT_LOCAL_RPC
+  rpcUrl: string = DEFAULT_LOCAL_RPC_URL
 ): Promise<SvmAccountInfo | null> {
-  try {
-    const connection = getSvmConnection(rpcUrl);
-    const publicKey = new PublicKey(pubkey);
+  const publicKey = new PublicKey(pubkey);
+  const { value } = await withSvmRpc(rpcUrl, async (connection) => {
     const accountInfo = await connection.getAccountInfo(publicKey);
 
     if (!accountInfo) return null;
@@ -138,125 +239,113 @@ export async function getAccountInfo(
       rentExempt: accountInfo.lamports >= rentThreshold,
       accountType,
     };
-  } catch (error) {
-    console.error("Error fetching account info:", error);
-    return null;
-  }
+  });
+  return value;
 }
 
 export async function getTokenAccounts(
   pubkey: string,
-  rpcUrl: string = DEFAULT_LOCAL_RPC
+  rpcUrl: string = DEFAULT_LOCAL_RPC_URL
 ): Promise<TokenAccountInfo[]> {
-  try {
-    const connection = getSvmConnection(rpcUrl);
-    const publicKey = new PublicKey(pubkey);
+  const publicKey = new PublicKey(pubkey);
+  const { value } = await withSvmRpc(rpcUrl, async (connection) => {
+    const programs = [
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+    ];
+    const responses = await Promise.all(programs.map((programId) =>
+      connection.getParsedTokenAccountsByOwner(publicKey, { programId: new PublicKey(programId) })
+    ));
 
-    const accounts: TokenAccountInfo[] = [];
-
-    const tokenAccounts = await connection.getTokenAccountsByOwner(publicKey, {
-      programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-    }).catch(() => ({ value: [] }));
-
-    const token2022Accounts = await connection.getTokenAccountsByOwner(publicKey, {
-      programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
-    }).catch(() => ({ value: [] }));
-
-    for (const account of [...tokenAccounts.value, ...token2022Accounts.value]) {
-      try {
-        const accountInfo = await connection.getAccountInfo(account.pubkey);
-        if (!accountInfo) continue;
-
-        const data = JSON.parse(accountInfo.data.toString());
-        const parsed = data?.parsed?.info;
-
-        if (parsed) {
-          accounts.push({
-            pubkey: account.pubkey.toBase58(),
-            mint: parsed.mint,
-            owner: parsed.owner,
-            amount: Number(parsed.tokenAmount.amount),
-            decimals: parsed.tokenAmount.decimals,
-            tokenAmount: parsed.tokenAmount.uiAmountString,
-          });
+    return responses.flatMap((response) =>
+      response.value.map((account) => {
+        const parsed = account.account.data.parsed?.info;
+        if (!parsed) {
+          throw new Error(`RPC did not return parsed token data for ${account.pubkey.toBase58()}.`);
         }
-      } catch {}
-    }
-
-    return accounts;
-  } catch (error) {
-    console.error("Error fetching token accounts:", error);
-    return [];
-  }
+        return {
+          pubkey: account.pubkey.toBase58(),
+          mint: parsed.mint,
+          owner: parsed.owner,
+          amount: Number(parsed.tokenAmount.amount),
+          decimals: parsed.tokenAmount.decimals,
+          tokenAmount: parsed.tokenAmount.uiAmountString,
+        };
+      })
+    );
+  });
+  return value;
 }
 
 export async function getRecentTransactions(
   pubkey: string,
   limit: number = 20,
-  rpcUrl: string = DEFAULT_LOCAL_RPC
+  rpcUrl: string = DEFAULT_SVM_RPC_URL
 ): Promise<SvmTransactionInfo[]> {
-  try {
-    const connection = getSvmConnection(rpcUrl);
-    const publicKey = new PublicKey(pubkey);
-    const signatures = await connection.getSignaturesForAddress(publicKey, { limit });
-
-    const transactions: SvmTransactionInfo[] = [];
-
-    for (const sig of signatures) {
-      const tx = await connection.getTransaction(sig.signature, {
-        maxSupportedTransactionVersion: 0,
-      });
-
-      if (tx) {
-        transactions.push({
-          signature: sig.signature,
-          slot: sig.slot,
-          blockTime: sig.blockTime ?? null,
-          meta: {
-            fee: tx.meta?.fee || 0,
-            success: tx.meta ? tx.meta.err === null : false,
-            logMessages: tx.meta?.logMessages || [],
-          },
-        });
-      }
+  const publicKey = new PublicKey(pubkey);
+  const { value } = await withSvmRpc(rpcUrl, async (connection) => {
+    const signatures = await connection.getSignaturesForAddress(publicKey, {
+      limit: Math.min(Math.max(1, limit), 100),
+    });
+    if (signatures.length === 0) return [];
+    
+    let transactions: any[] = [];
+    try {
+      transactions = await connection.getParsedTransactions(
+        signatures.map((signature) => signature.signature),
+        { commitment: "confirmed", maxSupportedTransactionVersion: 0 }
+      );
+    } catch (parseError) {
+      // Fallback: return signatures without parsed details if decoding fails
+      console.warn("Failed to parse transactions, returning signatures only:", parseError);
+      transactions = signatures.map(() => null);
     }
 
-    return transactions;
-  } catch (error) {
-    console.error("Error fetching transactions:", error);
-    return [];
-  }
+    return signatures.flatMap((signature, index) => {
+      const tx = transactions[index];
+      return [{
+          signature: signature.signature,
+          slot: signature.slot,
+          blockTime: signature.blockTime ?? null,
+          detailsAvailable: Boolean(tx?.meta),
+          meta: tx?.meta ? {
+            fee: tx.meta.fee ?? null,
+            success: tx.meta.err === null,
+            logMessages: tx.meta.logMessages ?? null,
+          } : {
+            fee: null,
+            success: null,
+            logMessages: null,
+          },
+        }];
+    });
+  });
+  return value;
 }
 
 export async function airdropSol(
   pubkey: string,
   amount: number,
-  rpcUrl: string = DEFAULT_LOCAL_RPC
+  rpcUrl: string = DEFAULT_LOCAL_RPC_URL
 ): Promise<{ signature: string | null; error?: string }> {
   try {
-    const connection = getSvmConnection(rpcUrl);
-    const publicKey = new PublicKey(pubkey);
-    const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
-
-    // Check if using mainnet - airdrop doesn't work on mainnet
-    const isMainnet = rpcUrl.includes("mainnet-beta") || rpcUrl.includes("api.mainnet-beta");
-    if (isMainnet) {
-      return { 
-        signature: null, 
-        error: "Airdrop not available on mainnet. Use local validator, devnet, or testnet." 
-      };
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 5) {
+      return { signature: null, error: "Airdrop amount must be greater than 0 and no more than 5 SOL." };
     }
-
-    // Check if using devnet or testnet - airdrop should work here
-    const isDevnet = rpcUrl.includes("devnet");
-    const isTestnet = rpcUrl.includes("testnet");
-    const isLocalhost = rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1");
+    const publicKey = new PublicKey(pubkey);
+    const network = getSvmNetworkLabel(rpcUrl);
+    if (!["Devnet", "Testnet", "Local Validator"].includes(network)) {
+      return { signature: null, error: "Airdrops are only available on a verified test network or local validator." };
+    }
+    const health = await getSvmHealth(rpcUrl);
+    const connection = getSvmConnection(health.endpoint);
+    const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
 
     const signature = await connection.requestAirdrop(publicKey, lamports);
 
     await connection.confirmTransaction(signature, "confirmed");
 
-    return { signature, error: undefined };
+    return { signature };
   } catch (error: any) {
     console.error("Error requesting airdrop:", error);
     const errorMsg = error.message || String(error);
@@ -279,13 +368,13 @@ export async function airdropSol(
       };
     }
     if (errorMsg.includes("404") || errorMsg.includes("not found") || errorMsg.includes("ECONNREFUSED")) {
-      return { signature: null, error: "Cannot connect to RPC endpoint. Is the local validator running?" };
+      return { signature: null, error: "The selected RPC endpoint is unavailable. Check its status and retry." };
     }
     if (errorMsg.includes("blockhash")) {
       return { signature: null, error: "RPC endpoint doesn't support airdrop. Use local validator or devnet." };
     }
     
-    return { signature: null, error: `Airdrop failed: ${errorMsg}` };
+    return { signature: null, error: "Airdrop failed. Check RPC availability and try again later." };
   }
 }
 
@@ -293,8 +382,7 @@ export async function analyzeProgramLogs(
   programId: string,
   logMessages: string[]
 ): Promise<ProgramAnalysisResult> {
-  try {
-    const logsText = logMessages.join("\n");
+  const logsText = logMessages.join("\n");
 
     const systemPrompt = `You are an expert Solana smart contract security analyst. Analyze the following Solana SVM program logs and provide:
 1. Risk assessment (low/medium/high)
@@ -318,35 +406,25 @@ Format your response as JSON with keys: riskLevel, potentialIssues, recommendati
       response_format: { type: "json_object" },
     });
 
-    const response = chatCompletion.choices[0]?.message?.content || "{}";
-    const parsed = JSON.parse(response);
+  const response = chatCompletion.choices[0]?.message?.content;
+  if (!response) throw new Error("AI analysis returned an empty response.");
+  const parsed = JSON.parse(response);
 
-    return {
-      programId,
-      analysis: parsed.analysis || "No analysis available",
-      riskLevel: parsed.riskLevel || "low",
-      recommendations: parsed.recommendations || [],
-      potentialIssues: parsed.potentialIssues || [],
-    };
-  } catch (error) {
-    console.error("Error analyzing program with AI:", error);
-    return {
-      programId,
-      analysis: "Failed to analyze program with AI",
-      riskLevel: "low",
-      recommendations: [],
-      potentialIssues: [],
-    };
-  }
+  return {
+    programId,
+    analysis: parsed.analysis || "No analysis available",
+    riskLevel: parsed.riskLevel,
+    recommendations: parsed.recommendations || [],
+    potentialIssues: parsed.potentialIssues || [],
+  };
 }
 
 export async function getProgramAccounts(
   programId: string,
-  rpcUrl: string = DEFAULT_LOCAL_RPC
+  rpcUrl: string = DEFAULT_LOCAL_RPC_URL
 ): Promise<{ pubkey: string; owner: string; data: string; lamports: number }[]> {
-  try {
-    const connection = getSvmConnection(rpcUrl);
-    const publicKey = new PublicKey(programId);
+  const publicKey = new PublicKey(programId);
+  const { value } = await withSvmRpc(rpcUrl, async (connection) => {
 
     const accounts = await connection.getProgramAccounts(publicKey, {
       encoding: "base64",
@@ -358,17 +436,12 @@ export async function getProgramAccounts(
       data: typeof acc.account.data === "string" ? acc.account.data : acc.account.data.toString("hex"),
       lamports: acc.account.lamports,
     }));
-  } catch (error) {
-    console.error("Error fetching program accounts:", error);
-    return [];
-  }
+  });
+  return value;
 }
 
-export async function getEpochInfo(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<EpochInfo | null> {
-  try {
-    const connection = getSvmConnection(rpcUrl);
-    const epochInfo = await connection.getEpochInfo();
-
+export async function getEpochInfo(rpcUrl: string = DEFAULT_LOCAL_RPC_URL): Promise<EpochInfo> {
+  const { value: epochInfo } = await withSvmRpc(rpcUrl, (connection) => connection.getEpochInfo());
     return {
       slotIndex: epochInfo.slotIndex,
       slotInEpoch: epochInfo.slotsInEpoch || 0,
@@ -376,10 +449,6 @@ export async function getEpochInfo(rpcUrl: string = DEFAULT_LOCAL_RPC): Promise<
       transactionCount: epochInfo.transactionCount || 0,
       blockHeight: epochInfo.blockHeight || 0,
     };
-  } catch (error) {
-    console.error("Error fetching epoch info:", error);
-    return null;
-  }
 }
 
 function getAccountType(pubkey: PublicKey, accountInfo: AccountInfo<Buffer<ArrayBufferLike>>): string {
