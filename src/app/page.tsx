@@ -86,7 +86,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="px-4 pb-8 sm:px-6" aria-label="Solcurity token launch">
+<section className="px-4 pb-8 sm:px-6" aria-label="Solcurity token launch">
         <div className="mx-auto max-w-7xl">
           <div className="relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-solana-blue/20 bg-[radial-gradient(ellipse_at_88%_50%,rgba(98,201,155,0.075),transparent_40%),linear-gradient(120deg,rgba(12,19,17,0.96),rgba(12,16,18,0.98))] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
             <div className="flex items-center gap-4">
@@ -104,7 +104,7 @@ export default function HomePage() {
                   The token CA will be shared here
                 </h2>
                 <p className="mt-1 max-w-2xl text-sm text-white/50">
-                  We’ll post the official mint address and direct Pump.fun link here when it launches.
+                  We&apos;ll post the official mint address and direct Pump.fun link here when it launches.
                 </p>
               </div>
             </div>
@@ -138,6 +138,40 @@ export default function HomePage() {
               )}
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="px-4 pb-8 sm:px-6" aria-label="Perps DEX">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/perps"
+            className="group relative flex flex-col gap-5 overflow-hidden rounded-2xl border border-[#eab308]/20 bg-[radial-gradient(ellipse_at_85%_50%,rgba(234,179,8,0.12),transparent_40%),linear-gradient(115deg,rgba(13,22,20,0.98),rgba(10,15,17,0.98))] p-5 transition hover:border-[#eab308]/35 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          >
+            <div className="flex items-center gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#eab308]/25 bg-[#eab308]/10">
+                <svg viewBox="0 0 32 32" className="h-8 w-8 text-[#eab308]" fill="none" aria-hidden="true">
+                  <path d="M16 4v24M4 16h24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  <circle cx="16" cy="16" r="10" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M16 8a8 8 0 018 8M16 24a8 8 0 008-8M16 8a8 8 0 00-8 8M16 24a8 8 0 01-8-8" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4,4" />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#eab308]/75">
+                  Perps & Options DEX · Proprietary AMMs
+                </span>
+                <span className="mt-1 block text-lg font-semibold text-white">
+                  Perps DEX
+                </span>
+                <span className="mt-1 block text-sm text-white/50">
+                  Trade perpetuals & options with best execution via Smart Order Routing across Jupiter, Drift, Phoenix & CEXs.
+                </span>
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#eab308]/25 bg-[#eab308]/10 px-4 py-2.5 text-sm font-semibold text-[#eab308] transition group-hover:bg-[#eab308]/20 sm:self-auto">
+              Open Perps DEX
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
         </div>
       </section>
 

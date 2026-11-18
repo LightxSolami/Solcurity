@@ -10,7 +10,9 @@ const navItems = [
   { href: "/", label: "Tracker" },
   { href: "/scanner", label: "Scanner" },
   { href: "/bubble-map", label: "Fly Map" },
+  { href: "/perps", label: "Perps DEX" },
   { href: "/svm", label: "SVM Explorer" },
+  { href: "/threat-intel", label: "Threat Intel" },
   { href: "/tools", label: "Tools" },
   { href: "/games", label: "Games" },
 ];
@@ -129,3 +131,5 @@ export function NavBar() {
     </header>
   );
 }
+
+export const Header = NavBar;
