@@ -23,16 +23,40 @@ interface OrderBookState {
   getOrderBook: (market: string) => OrderBookSnapshot | undefined;
 }
 
-const generateMockOrderBook = (market: string, midPrice: number): OrderBookSnapshot => {
+const getBinanceSymbol = (market: string): string | null => {
+  const base = market.split('-')[0];
+  if (base === 'SOL') return 'SOLUSDT';
+  if (base === 'BTC') return 'BTCUSDT';
+  if (base === 'ETH') return 'ETHUSDT';
+  return null;
+};
+
+const getDecimals = (market: string): number => {
+  if (market.startsWith('BTC')) return 1;
+  return 2;
+};
+
+async function fetchBinanceDepth(symbol: string, limit = 50): Promise<{ bids: [string, string][]; asks: [string, string][] } | null> {
+  try {
+    const res = await fetch(`https://api.binance.com/api/v3/depth?symbol=${symbol}&limit=${limit}`, {
+      next: { revalidate: 5 },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+function generateFallbackOrderBook(market: string, midPrice: number): OrderBookSnapshot {
   const bids: OrderBookLevel[] = [];
   const asks: OrderBookLevel[] = [];
+  const decimals = getDecimals(market);
   
   for (let i = 0; i < 50; i++) {
     const bidPrice = midPrice * (1 - (i + 1) * 0.0005);
     const askPrice = midPrice * (1 + (i + 1) * 0.0005);
     const size = Math.random() * 1000 + 100;
-    
-    const decimals = market.startsWith('BTC') ? 1 : market.startsWith('SOL') ? 2 : 2;
     
     bids.push({
       price: bidPrice.toFixed(decimals),
@@ -54,49 +78,98 @@ const generateMockOrderBook = (market: string, midPrice: number): OrderBookSnaps
     timestamp: Date.now(),
     sequence: Math.floor(Math.random() * 1000000),
   };
-};
-
-const getMidPriceForMarket = (market: string): number => {
-  const base = market.split('-')[0];
-  if (base === 'SOL') return 234.50;
-  if (base === 'BTC') return 96840.30;
-  if (base === 'ETH') return 3642.15;
-  return 100;
-};
+}
 
 export const usePerpsOrderBook = create<OrderBookState>((set, get) => ({
   orderBooks: {},
   subscriptions: {},
   
   subscribe: (market) => {
-    set((state) => {
-      const count = (state.subscriptions[market] || 0) + 1;
-      if (count === 1 && !state.orderBooks[market]) {
-        const midPrice = getMidPriceForMarket(market);
-        return {
-          subscriptions: { ...state.subscriptions, [market]: count },
-          orderBooks: { ...state.orderBooks, [market]: generateMockOrderBook(market, midPrice) },
-        };
+    const symbol = getBinanceSymbol(market);
+    
+    const initBook = async () => {
+      let book: OrderBookSnapshot;
+      
+      if (symbol) {
+        const depth = await fetchBinanceDepth(symbol);
+        if (depth) {
+          const decimals = getDecimals(market);
+          book = {
+            market,
+            bids: depth.bids.map(([price, size]) => ({
+              price: parseFloat(price).toFixed(decimals),
+              size: parseFloat(size).toFixed(3),
+              orders: 1,
+            })),
+            asks: depth.asks.map(([price, size]) => ({
+              price: parseFloat(price).toFixed(decimals),
+              size: parseFloat(size).toFixed(3),
+              orders: 1,
+            })),
+            timestamp: Date.now(),
+            sequence: 1,
+          };
+        } else {
+          const midPrice = symbol === 'SOLUSDT' ? 234 : symbol === 'BTCUSDT' ? 96840 : 3642;
+          book = generateFallbackOrderBook(market, midPrice);
+        }
+      } else {
+        const midPrice = market.startsWith('SOL') ? 234 : market.startsWith('BTC') ? 96840 : 3642;
+        book = generateFallbackOrderBook(market, midPrice);
       }
-      return { subscriptions: { ...state.subscriptions, [market]: count } };
-    });
+      
+      set((state) => ({
+        orderBooks: { ...state.orderBooks, [market]: book },
+        subscriptions: { ...state.subscriptions, [market]: (state.subscriptions[market] || 0) + 1 },
+      }));
+    };
+    
+    initBook();
 
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       const state = get();
       if (state.subscriptions[market] > 0) {
-        const currentBook = state.orderBooks[market];
-        if (currentBook) {
-          const midPrice = (parseFloat(currentBook.bids[0]?.price || '0') + parseFloat(currentBook.asks[0]?.price || '0')) / 2;
-          const variation = (Math.random() - 0.5) * 0.002;
-          const newMidPrice = midPrice * (1 + variation);
-          
-          const newBook = generateMockOrderBook(market, newMidPrice);
-          set((s) => ({
-            orderBooks: { ...s.orderBooks, [market]: { ...newBook, sequence: currentBook.sequence + 1 } },
-          }));
+        const symbol = getBinanceSymbol(market);
+        if (symbol) {
+          const depth = await fetchBinanceDepth(symbol);
+          if (depth) {
+            const decimals = getDecimals(market);
+            const currentBook = state.orderBooks[market];
+            const newBook: OrderBookSnapshot = {
+              market,
+              bids: depth.bids.map(([price, size]) => ({
+                price: parseFloat(price).toFixed(decimals),
+                size: parseFloat(size).toFixed(3),
+                orders: 1,
+              })),
+              asks: depth.asks.map(([price, size]) => ({
+                price: parseFloat(price).toFixed(decimals),
+                size: parseFloat(size).toFixed(3),
+                orders: 1,
+              })),
+              timestamp: Date.now(),
+              sequence: (currentBook?.sequence || 0) + 1,
+            };
+            set((s) => ({
+              orderBooks: { ...s.orderBooks, [market]: newBook },
+            }));
+          }
+        } else {
+          // Fallback simulation
+          const currentBook = state.orderBooks[market];
+          if (currentBook) {
+            const midPrice = (parseFloat(currentBook.bids[0]?.price || '0') + parseFloat(currentBook.asks[0]?.price || '0')) / 2;
+            const variation = (Math.random() - 0.5) * 0.002;
+            const newMidPrice = midPrice * (1 + variation);
+            const newBook = generateFallbackOrderBook(market, newMidPrice);
+            newBook.sequence = (currentBook.sequence || 0) + 1;
+            set((s) => ({
+              orderBooks: { ...s.orderBooks, [market]: newBook },
+            }));
+          }
         }
       }
-    }, 1000);
+    }, 5000);
 
     return () => clearInterval(interval);
   },
