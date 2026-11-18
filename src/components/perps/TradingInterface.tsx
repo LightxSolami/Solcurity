@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Zap, AlertTriangle, Info } from 'lucide-react';
 import { Market } from '@/store/perps/useMarkets';
 import { usePerpsMarkets } from '@/store/perps/useMarkets';
@@ -22,6 +22,20 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
   const [postOnly, setPostOnly] = useState(false);
   const [triggerPrice, setTriggerPrice] = useState('');
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [leverageOpen, setLeverageOpen] = useState(false);
+  const leverageRef = useRef<HTMLDivElement>(null);
+
+  const leverageOptions = [1, 2, 3, 5, 10, 20, 25, 50];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (leverageRef.current && !leverageRef.current.contains(event.target as Node)) {
+        setLeverageOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const isBuy = side === 'buy';
   const isLimit = orderType === 'limit' || orderType === 'stop_limit';
@@ -70,15 +84,32 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <select
-              value={leverage}
-              onChange={(e) => setLeverage(parseInt(e.target.value))}
-              className="px-2 py-1 text-sm bg-white/5 border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-solana-blue/50"
-            >
-              {[1, 2, 3, 5, 10, 20, 25, 50].map(l => (
-                <option key={l} value={l}>{l}x</option>
-              ))}
-            </select>
+            <div className="relative" ref={leverageRef}>
+              <button
+                onClick={() => setLeverageOpen(!leverageOpen)}
+                className="flex items-center gap-1 px-2 py-1 text-sm bg-black border border-white/10 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-solana-blue/50"
+              >
+                <span>{leverage}x</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${leverageOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {leverageOpen && (
+                <div className="absolute right-0 top-full mt-1 z-20 w-24 bg-black border border-white/10 rounded-lg shadow-lg overflow-hidden animate-slide-down">
+                  {leverageOptions.map(l => (
+                    <button
+                      key={l}
+                      onClick={() => { setLeverage(l); setLeverageOpen(false); }}
+                      className={`w-full px-3 py-2 text-sm text-left transition-colors ${
+                        leverage === l
+                          ? 'bg-solana-blue/20 text-solana-blue'
+                          : 'text-white/80 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {l}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
