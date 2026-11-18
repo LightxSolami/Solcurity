@@ -32,14 +32,16 @@ const generateMockOrderBook = (market: string, midPrice: number): OrderBookSnaps
     const askPrice = midPrice * (1 + (i + 1) * 0.0005);
     const size = Math.random() * 1000 + 100;
     
+    const decimals = market.startsWith('BTC') ? 1 : market.startsWith('SOL') ? 2 : 2;
+    
     bids.push({
-      price: bidPrice.toFixed(2),
+      price: bidPrice.toFixed(decimals),
       size: size.toFixed(3),
       orders: Math.floor(Math.random() * 10) + 1,
     });
     
     asks.push({
-      price: askPrice.toFixed(2),
+      price: askPrice.toFixed(decimals),
       size: size.toFixed(3),
       orders: Math.floor(Math.random() * 10) + 1,
     });
@@ -54,6 +56,14 @@ const generateMockOrderBook = (market: string, midPrice: number): OrderBookSnaps
   };
 };
 
+const getMidPriceForMarket = (market: string): number => {
+  const base = market.split('-')[0];
+  if (base === 'SOL') return 234.50;
+  if (base === 'BTC') return 96840.30;
+  if (base === 'ETH') return 3642.15;
+  return 100;
+};
+
 export const usePerpsOrderBook = create<OrderBookState>((set, get) => ({
   orderBooks: {},
   subscriptions: {},
@@ -62,8 +72,7 @@ export const usePerpsOrderBook = create<OrderBookState>((set, get) => ({
     set((state) => {
       const count = (state.subscriptions[market] || 0) + 1;
       if (count === 1 && !state.orderBooks[market]) {
-        const marketData = market.split('-');
-        const midPrice = marketData[0] === 'SOL' ? 142.35 : marketData[0] === 'BTC' ? 67420.50 : 3245.80;
+        const midPrice = getMidPriceForMarket(market);
         return {
           subscriptions: { ...state.subscriptions, [market]: count },
           orderBooks: { ...state.orderBooks, [market]: generateMockOrderBook(market, midPrice) },

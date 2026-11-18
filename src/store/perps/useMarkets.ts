@@ -31,10 +31,10 @@ const mockMarkets: Market[] = [
     symbol: 'SOL-USD',
     baseAsset: 'SOL',
     quoteAsset: 'USD',
-    price: '142.35',
-    change24h: '+5.23%',
-    volume24h: '$1.2B',
-    openInterest: '$450M',
+    price: '234.50',
+    change24h: '+8.42%',
+    volume24h: '$2.1B',
+    openInterest: '$890M',
     fundingRate: '0.012%',
     maxLeverage: 20,
     tickSize: '0.01',
@@ -46,10 +46,10 @@ const mockMarkets: Market[] = [
     symbol: 'BTC-USD',
     baseAsset: 'BTC',
     quoteAsset: 'USD',
-    price: '67420.50',
-    change24h: '+2.15%',
-    volume24h: '$2.8B',
-    openInterest: '$1.2B',
+    price: '96840.30',
+    change24h: '+1.23%',
+    volume24h: '$18.5B',
+    openInterest: '$3.2B',
     fundingRate: '0.008%',
     maxLeverage: 25,
     tickSize: '0.1',
@@ -61,10 +61,10 @@ const mockMarkets: Market[] = [
     symbol: 'ETH-USD',
     baseAsset: 'ETH',
     quoteAsset: 'USD',
-    price: '3245.80',
-    change24h: '+3.42%',
-    volume24h: '$1.5B',
-    openInterest: '$680M',
+    price: '3642.15',
+    change24h: '+2.67%',
+    volume24h: '$8.2B',
+    openInterest: '$1.4B',
     fundingRate: '0.015%',
     maxLeverage: 20,
     tickSize: '0.01',
@@ -73,13 +73,13 @@ const mockMarkets: Market[] = [
     isPerp: true,
   },
   {
-    symbol: 'SOL-145-C-20241227',
+    symbol: 'SOL-250-C-20241227',
     baseAsset: 'SOL',
     quoteAsset: 'USD',
-    price: '8.45',
-    change24h: '+12.5%',
-    volume24h: '$45M',
-    openInterest: '$12M',
+    price: '12.30',
+    change24h: '+15.2%',
+    volume24h: '$67M',
+    openInterest: '$18M',
     fundingRate: '0%',
     maxLeverage: 1,
     tickSize: '0.01',
@@ -89,13 +89,13 @@ const mockMarkets: Market[] = [
     expiry: 1735257600000,
   },
   {
-    symbol: 'BTC-68000-P-20241227',
+    symbol: 'BTC-98000-P-20241227',
     baseAsset: 'BTC',
     quoteAsset: 'USD',
-    price: '1250.00',
-    change24h: '-8.2%',
-    volume24h: '$89M',
-    openInterest: '$25M',
+    price: '2100.00',
+    change24h: '-5.4%',
+    volume24h: '$120M',
+    openInterest: '$35M',
     fundingRate: '0%',
     maxLeverage: 1,
     tickSize: '0.1',
@@ -131,3 +131,21 @@ export const usePerpsMarkets = create<MarketState>()(
     }
   )
 );
+
+// Price simulation for live feel
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    const state = usePerpsMarkets.getState();
+    const updatedMarkets = state.markets.map(m => {
+      const variation = (Math.random() - 0.5) * 0.003; // ±0.3%
+      const newPrice = parseFloat(m.price) * (1 + variation);
+      const change24h = parseFloat(m.change24h.replace('%', '')) + (Math.random() - 0.5) * 0.2;
+      return {
+        ...m,
+        price: newPrice.toFixed(m.symbol.startsWith('BTC') ? 1 : 2),
+        change24h: `${change24h >= 0 ? '+' : ''}${change24h.toFixed(2)}%`,
+      };
+    });
+    usePerpsMarkets.setState({ markets: updatedMarkets });
+  }, 5000);
+}
