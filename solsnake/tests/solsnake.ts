@@ -8,6 +8,13 @@ const { Keypair, PublicKey, LAMPORTS_PER_SOL, SystemProgram } = anchor.web3;
 const BN = anchor.BN;
 type BN = InstanceType<typeof BN>;
 
+function assertProgramError(error: unknown, code: string) {
+  const actualCode = (
+    error as { error?: { errorCode?: { code?: string } } }
+  )?.error?.errorCode?.code;
+  assert.equal(actualCode, code);
+}
+
 describe("solsnake_escrow", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -28,8 +35,14 @@ describe("solsnake_escrow", () => {
     return { gm, vault };
   };
   const fund = async (kp: anchor.web3.Keypair, sol = 2) => {
-    const sig = await provider.connection.requestAirdrop(kp.publicKey, sol * LAMPORTS_PER_SOL);
-    await provider.connection.confirmTransaction(sig, "confirmed");
+    const tx = new anchor.web3.Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: authority.publicKey,
+        toPubkey: kp.publicKey,
+        lamports: sol * LAMPORTS_PER_SOL,
+      })
+    );
+    await provider.sendAndConfirm(tx);
   };
   const create = async (
     id: BN,
@@ -106,8 +119,8 @@ describe("solsnake_escrow", () => {
     try {
       await create(new BN(Date.now()), new BN(123));
       assert.fail();
-    } catch (error: any) {
-      assert.include(error.toString(), "InvalidEntryFee");
+    } catch (error: unknown) {
+      assertProgramError(error, "InvalidEntryFee");
     }
   });
 
@@ -115,14 +128,14 @@ describe("solsnake_escrow", () => {
     try {
       await create(new BN(Date.now() + 1), FEE, 500);
       assert.fail();
-    } catch (error: any) {
-      assert.include(error.toString(), "InvalidFeeRate");
+    } catch (error: unknown) {
+      assertProgramError(error, "InvalidFeeRate");
     }
     try {
       await create(new BN(Date.now() + 2), FEE, FEE_BPS, Keypair.generate().publicKey);
       assert.fail();
-    } catch (error: any) {
-      assert.include(error.toString(), "BadTreasury");
+    } catch (error: unknown) {
+      assertProgramError(error, "BadTreasury");
     }
   });
 
@@ -140,51 +153,54 @@ describe("solsnake_escrow", () => {
     const initial = await program.account.gameMatch.fetch(gm);
     assert.equal(initial.count, 5);
     assert.equal(initial.round, 0);
+    assert.deepEqual(initial.status, { open: {} });
 
     const directions = [0, 1, 2, 3, 0];
     let finalRevealSignature: string | undefined;
     let treasuryBefore = 0;
     let winnerBefore = 0;
-    for (let round = 0; round < 6; round++) {
+    for (let round = 0; round < 5; round++) {
       const salts = players.map((_, index) => Buffer.alloc(32, index + round + 1));
       const hashes = players.map((player, index) =>
         commitment(id, round, player.publicKey, directions[index], salts[index])
       );
       for (let index = 0; index < players.length; index++) {
         await commitMove(gm, players, index, hashes[index]);
+        if (round === 0 && index === 0) {
+          try {
+            await commitMove(gm, players, 0, hashes[0]);
+            assert.fail();
+          } catch (error: unknown) {
+            assertProgramError(error, "MoveAlreadyCommitted");
+          }
+          try {
+            await revealMove(gm, vault, players, 0, directions[0], salts[0]);
+            assert.fail();
+          } catch (error: unknown) {
+            assertProgramError(error, "RevealNotStarted");
+          }
+        }
       }
       if (round === 0) {
         try {
-          await commitMove(gm, players, 0, hashes[0]);
-          assert.fail();
-        } catch (error: any) {
-          assert.include(error.toString(), "MoveAlreadyCommitted");
-        }
-        try {
-          await revealMove(gm, vault, players, 0, directions[0], salts[0]);
-          assert.fail();
-        } catch (error: any) {
-          assert.include(error.toString(), "RevealNotStarted");
-        }
-        try {
           await revealMove(gm, vault, players, 0, 1, salts[0]);
           assert.fail();
-        } catch (error: any) {
-          assert.include(error.toString(), "InvalidReveal");
+        } catch (error: unknown) {
+          assertProgramError(error, "InvalidReveal");
         }
       }
-      if (round === 5) {
+      if (round === 4) {
         treasuryBefore = await provider.connection.getBalance(treasury);
         winnerBefore = await provider.connection.getBalance(players[4].publicKey);
       }
       for (let index = 0; index < players.length; index++) {
         const signature = await revealMove(gm, vault, players, index, directions[index], salts[index]);
-        if (round === 5 && index === players.length - 1) finalRevealSignature = signature;
+        if (round === 4 && index === players.length - 1) finalRevealSignature = signature;
       }
     }
 
     const resolved = await program.account.gameMatch.fetch(gm);
-    assert.equal(resolved.round, 5);
+    assert.equal(resolved.round, 4);
     assert.equal(resolved.status.settled !== undefined, true);
     assert.deepEqual(Array.from(resolved.alive), [false, false, false, false, true]);
     assert.equal(
@@ -205,13 +221,13 @@ describe("solsnake_escrow", () => {
     const id = new BN(Date.now() + 4);
     const { gm, vault } = await create(id);
     const player = Keypair.generate();
-    await fund(player);
+    await fund(player, 12);
     await join(gm, vault, player);
     try {
       await join(gm, vault, player);
       assert.fail();
-    } catch (error: any) {
-      assert.include(error.toString(), "AlreadyJoined");
+    } catch (error: unknown) {
+      assertProgramError(error, "AlreadyJoined");
     }
   });
 });

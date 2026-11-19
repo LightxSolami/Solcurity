@@ -1,4 +1,4 @@
-export const DEFAULT_SVM_RPC_URL = "https://solana-mainnet.g.alchemy.com/v2/demo";
+export const DEFAULT_SVM_RPC_URL = "https://api.mainnet-beta.solana.com";
 export const DEFAULT_LOCAL_RPC_URL = "http://127.0.0.1:8899";
 export const SVM_GENESIS_HASHES = {
   Mainnet: "5eykt4UsFv8P8NJdTREpY1vzqKqZKvdpKuc147dw2N9d",

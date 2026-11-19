@@ -15,7 +15,8 @@ describe("SVM genesis hashes", () => {
 });
 
 describe("getSvmNetworkLabel", () => {
-  it("defaults the explorer to Mainnet", () => {
+  it("defaults the explorer to the Official Mainnet Beta RPC", () => {
+    expect(DEFAULT_SVM_RPC_URL).toBe("https://api.mainnet-beta.solana.com");
     expect(getSvmNetworkLabel(DEFAULT_SVM_RPC_URL)).toBe("Mainnet");
   });
 
