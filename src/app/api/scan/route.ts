@@ -3,6 +3,7 @@ import { ScanRequestSchema } from "@/lib/validators";
 import { runScan } from "@/services/scan.service";
 import { getRateLimiter, getClientIp } from "@/lib/rate-limit";
 import { getCachedScan, setCachedScan } from "@/lib/cache";
+import { isConfiguredRpcUrl } from "@/lib/rpc-endpoints";
 
 export async function POST(request: NextRequest) {
   const rateLimiter = getRateLimiter();
@@ -28,10 +29,16 @@ export async function POST(request: NextRequest) {
     }
 
     const { address } = parsed.data;
+    if (parsed.data.rpcUrl && !isConfiguredRpcUrl(parsed.data.rpcUrl)) {
+      return NextResponse.json(
+        { error: "RPC URL must be configured by the server before it can be used." },
+        { status: 400 }
+      );
+    }
 
     // Check cache first
     const cached = getCachedScan(address);
-    if (cached) {
+    if (cached && !cached.summary.partialScan && cached.score !== null) {
       return NextResponse.json(cached, {
         headers: {
           "X-RateLimit-Remaining": String(rateCheck.remaining),
@@ -44,7 +51,9 @@ export async function POST(request: NextRequest) {
     const result = await runScan(address, parsed.data.rpcUrl);
 
     // Cache the result
-    setCachedScan(address, result);
+    if (!result.summary.partialScan && result.score !== null) {
+      setCachedScan(address, result);
+    }
 
     return NextResponse.json(result, {
       headers: {

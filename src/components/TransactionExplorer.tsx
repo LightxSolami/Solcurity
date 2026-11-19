@@ -24,11 +24,22 @@ export function TransactionExplorer({ transactions }: TransactionExplorerProps) 
 
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort((a, b) => {
-      if (!sortConfig) return b.blockTime - a.blockTime;
+      if (!sortConfig) {
+        if (a.blockTime === b.blockTime) return 0;
+        if (a.blockTime === null) return 1;
+        if (b.blockTime === null) return -1;
+        return b.blockTime - a.blockTime;
+      }
       const aVal = a[sortConfig.key];
       const bVal = b[sortConfig.key];
-      if (aVal < bVal) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aVal > bVal) return sortConfig.direction === "asc" ? 1 : -1;
+      if (aVal === bVal) return 0;
+      if (aVal === null || aVal === undefined) return 1;
+      if (bVal === null || bVal === undefined) return -1;
+      const comparison = typeof aVal === "number" && typeof bVal === "number"
+        ? aVal - bVal
+        : String(aVal).localeCompare(String(bVal));
+      if (comparison < 0) return sortConfig.direction === "asc" ? -1 : 1;
+      if (comparison > 0) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     });
   }, [transactions, sortConfig]);
@@ -51,7 +62,7 @@ export function TransactionExplorer({ transactions }: TransactionExplorerProps) 
     switch (status) {
       case "flagged": return <span className="px-2 py-0.5 rounded text-xs bg-risk-critical/20 text-risk-critical">Flagged</span>;
       case "suspicious": return <span className="px-2 py-0.5 rounded text-xs bg-risk-high/20 text-risk-high">Suspicious</span>;
-      default: return <span className="px-2 py-0.5 rounded text-xs bg-risk-low/20 text-risk-low">Clean</span>;
+      default: return <span className="px-2 py-0.5 rounded text-xs bg-white/10 text-white/60">Not assessed</span>;
     }
   };
 
@@ -60,6 +71,7 @@ export function TransactionExplorer({ transactions }: TransactionExplorerProps) 
       incoming: "bg-risk-low/20 text-risk-low",
       outgoing: "bg-risk-high/20 text-risk-high",
       internal: "bg-white/10 text-white/60",
+      unknown: "bg-white/10 text-white/60",
     };
     return <span className={`px-2 py-0.5 rounded text-xs ${colors[dir]}`}>{dir}</span>;
   };
@@ -78,7 +90,7 @@ export function TransactionExplorer({ transactions }: TransactionExplorerProps) 
                 Direction
               </th>
               <th className="pb-3 pr-4 text-right cursor-pointer hover:text-white" onClick={() => requestSort("solAmount")}>
-                SOL Amount
+                Net SOL Change
               </th>
               <th className="pb-3 pr-4">Counterparty/Program</th>
               <th className="pb-3 pr-4">Risk</th>
@@ -88,13 +100,15 @@ export function TransactionExplorer({ transactions }: TransactionExplorerProps) 
             {paginated.map((tx) => (
               <tr key={tx.signature} className="hover:bg-white/5 transition-colors">
                 <td className="py-3 pr-4 text-white/70 text-sm">
-                  {new Date(tx.blockTime * 1000).toLocaleString()}
+                  {tx.blockTime === null ? "Unavailable" : new Date(tx.blockTime * 1000).toLocaleString()}
                 </td>
                 <td className="py-3 pr-4">
                   <code className="text-white/60 font-mono text-xs">{tx.signature.slice(0, 12)}...{tx.signature.slice(-8)}</code>
                 </td>
                 <td className="py-3 pr-4">{getDirectionBadge(tx.direction)}</td>
-                <td className="py-3 pr-4 text-right font-mono text-white">{tx.solAmount.toFixed(6)}</td>
+                <td className="py-3 pr-4 text-right font-mono text-white">
+                  {tx.solAmount === null ? "Unavailable" : tx.solAmount.toFixed(6)}
+                </td>
                 <td className="py-3 pr-4">
                   <div className="flex flex-wrap gap-1">
                     {tx.programInteractions.slice(0, 3).map((pid, i) => (

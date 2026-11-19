@@ -10,7 +10,6 @@ import { TransactionExplorer } from "@/components/TransactionExplorer";
 import { ProgramInteractions } from "@/components/ProgramInteractions";
 import { SecurityWarning } from "@/components/SecurityWarning";
 import Link from "next/link";
-import Image from "next/image";
 
 interface ScanResultsProps {
   address: string;
@@ -21,7 +20,7 @@ const SCAN_STEPS = [
   { id: "transactions", label: "Transaction history", desc: "Analyzing recent transfers & patterns" },
   { id: "tokens", label: "Token holdings", desc: "Checking SPL & Token-2022 tokens" },
   { id: "programs", label: "Program interactions", desc: "Identifying contract interactions" },
-  { id: "threat_intel", label: "Threat intelligence", desc: "Cross-referencing malicious databases" },
+  { id: "threat_intel", label: "Threat intelligence", desc: "Checking the local curated dataset" },
   { id: "scoring", label: "Risk scoring", desc: "Calculating security score" },
 ];
 
@@ -172,21 +171,6 @@ export function ScanResults({ address }: ScanResultsProps) {
               </svg>
               New Scan
             </Link>
-            <a
-              href="https://pump.fun/coin/FVohCadzbaig88VGBKXtcava3c5PaWczD7HKboCqpump"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-white hover:bg-purple-500/30 transition-colors text-sm"
-            >
-              <Image
-                src="https://pump.fun/favicon.ico"
-                alt="Pump Fun"
-                width={16}
-                height={16}
-                className="w-4 h-4 object-contain"
-              />
-              PumpFun: FVohCadz...CQPump
-            </a>
           </div>
         </div>
 
@@ -206,6 +190,29 @@ export function ScanResults({ address }: ScanResultsProps) {
       </div>
 
       <SecurityWarning />
+
+      <section className="mt-8 rounded-2xl border border-white/10 bg-solana-card p-5" aria-label="Security check results">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-white/70">Security check results</h2>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {result.checks.map((check) => (
+            <article key={check.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-medium text-white">{check.label}</h3>
+                <span className={`rounded px-2 py-0.5 text-[10px] font-semibold ${
+                  check.status === "PASS" ? "bg-risk-low/20 text-risk-low" :
+                  check.status === "FAIL" ? "bg-risk-critical/20 text-risk-critical" :
+                  check.status === "UNKNOWN" ? "bg-risk-moderate/20 text-risk-moderate" :
+                  "bg-white/10 text-white/50"
+                }`}>{check.status}</span>
+              </div>
+              <p className="mt-1 text-xs text-white/45">
+                {check.critical ? "Critical check" : "Supplementary check"}
+                {check.detail ? ` · ${check.detail}` : ""}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <SecurityScore result={result} />
 

@@ -14,6 +14,7 @@ export type SvmNetworkLabel =
   | "Custom RPC (network unverified)";
 
 export const SVM_RPC_OPTIONS = [
+  { label: "Official Mainnet Beta", url: "https://api.mainnet-beta.solana.com", network: "Mainnet" },
   { label: "Alchemy Demo (recommended)", url: "https://solana-mainnet.g.alchemy.com/v2/demo", network: "Mainnet" },
   { label: "Ankr", url: "https://rpc.ankr.com/solana", network: "Mainnet" },
   { label: "DRPC", url: "https://solana.drpc.org", network: "Mainnet" },
@@ -21,7 +22,6 @@ export const SVM_RPC_OPTIONS = [
   { label: "PublicNode", url: "https://solana-rpc.publicnode.com", network: "Mainnet" },
   { label: "Chainstack Labs", url: "https://solana-mainnet.chainstacklabs.com", network: "Mainnet" },
   { label: "Syndica Free", url: "https://solana.api.syndica.io/api-key/free/solana-mainnet", network: "Mainnet" },
-  { label: "Official Mainnet Beta", url: "https://api.mainnet-beta.solana.com", network: "Mainnet" },
   { label: "Devnet", url: "https://api.devnet.solana.com", network: "Devnet" },
   { label: "Testnet", url: "https://api.testnet.solana.com", network: "Testnet" },
   { label: "Local Validator", url: DEFAULT_LOCAL_RPC_URL, network: "Local Validator" },

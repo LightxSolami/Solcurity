@@ -1,9 +1,20 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL, type GetProgramAccountsConfig, type TokenAccountBalancePair } from "@solana/web3.js";
-import { buildFreeRpcEndpoints } from "@/lib/rpc-endpoints";
+import { buildFreeRpcEndpoints, isConfiguredRpcUrl } from "@/lib/rpc-endpoints";
+import { SVM_GENESIS_HASHES } from "@/lib/svm-network";
 
 const FREE_RPC_ENDPOINTS = buildFreeRpcEndpoints();
 
 let currentRpcIndex = 0;
+const endpointHealth = new Map<string, {
+  lastChecked: string;
+  lastSuccess?: string;
+  consecutiveFailures: number;
+  lastError?: string;
+  cooldownUntil?: number;
+}>();
+const verifiedMainnetEndpoints = new Map<string, number>();
+
+export type RpcExecutor = <T>(operation: (connection: Connection) => Promise<T>) => Promise<T>;
 
 export function createSolanaConnection(rpcUrl?: string): Connection {
   const url = rpcUrl || FREE_RPC_ENDPOINTS[currentRpcIndex] || "https://api.mainnet-beta.solana.com";
@@ -24,42 +35,104 @@ export function createSolanaConnection(rpcUrl?: string): Connection {
 }
 
 export function getRpcUrl(): string {
-  return FREE_RPC_ENDPOINTS[currentRpcIndex];
+  return FREE_RPC_ENDPOINTS[currentRpcIndex] || FREE_RPC_ENDPOINTS[0];
 }
 
 export function rotateRpcEndpoint(): string {
+  if (FREE_RPC_ENDPOINTS.length === 0) {
+    throw new Error("No Solana RPC endpoints are configured.");
+  }
   currentRpcIndex = (currentRpcIndex + 1) % FREE_RPC_ENDPOINTS.length;
   return FREE_RPC_ENDPOINTS[currentRpcIndex];
 }
 
+export function getRpcEndpointHealth() {
+  return FREE_RPC_ENDPOINTS.map((endpoint) => ({
+    endpoint,
+    ...(endpointHealth.get(endpoint) || {
+      lastChecked: null,
+      lastSuccess: null,
+      consecutiveFailures: 0,
+    }),
+  }));
+}
+
 export async function withRpcRetry<T>(
   operation: (connection: Connection) => Promise<T>,
-  maxRetries = 3
+  maxRetries = FREE_RPC_ENDPOINTS.length - 1,
+  preferredRpcUrl?: string
 ): Promise<T> {
   let lastError: Error | null = null;
+  if (preferredRpcUrl && !isConfiguredRpcUrl(preferredRpcUrl)) {
+    throw new Error("The requested RPC URL is not in the server's configured endpoint list.");
+  }
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const connection = createSolanaConnection();
+  const candidates = preferredRpcUrl
+    ? [preferredRpcUrl, ...FREE_RPC_ENDPOINTS.filter((endpoint) => endpoint !== preferredRpcUrl)]
+    : [...FREE_RPC_ENDPOINTS];
+  const now = Date.now();
+  const availableEndpoints = candidates.filter(
+    (endpoint) => (endpointHealth.get(endpoint)?.cooldownUntil || 0) <= now
+  );
+  const endpoints = availableEndpoints.length > 0
+    ? availableEndpoints
+    : candidates
+      .slice()
+      .sort((a, b) =>
+        (endpointHealth.get(a)?.cooldownUntil || 0) -
+        (endpointHealth.get(b)?.cooldownUntil || 0)
+      )
+      .slice(0, 1);
+  const attempts = Math.min(Math.max(1, maxRetries + 1), endpoints.length);
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const endpoint = endpoints[attempt];
+    const connection = createSolanaConnection(endpoint);
     try {
-      return await operation(connection);
+      if ((verifiedMainnetEndpoints.get(endpoint) || 0) < Date.now()) {
+        const genesisHash = await connection.getGenesisHash();
+        if (genesisHash !== SVM_GENESIS_HASHES.Mainnet) {
+          throw new Error("RPC endpoint is not connected to Solana Mainnet.");
+        }
+        verifiedMainnetEndpoints.set(endpoint, Date.now() + 5 * 60 * 1000);
+      }
+      const result = await operation(connection);
+      const now = new Date().toISOString();
+      endpointHealth.set(endpoint, {
+        lastChecked: now,
+        lastSuccess: now,
+        consecutiveFailures: 0,
+      });
+      currentRpcIndex = Math.max(0, FREE_RPC_ENDPOINTS.indexOf(endpoint));
+      return result;
     } catch (err) {
       lastError = err instanceof Error ? err : new Error(String(err));
-      
-      if (attempt < maxRetries) {
-        rotateRpcEndpoint();
-        const isRateLimited =
-          lastError.message.includes("429") ||
-          lastError.message.includes("403") ||
-          lastError.message.toLowerCase().includes("rate limit") ||
-          lastError.message.includes("Too Many Requests");
-        if (isRateLimited) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
-        }
+      const priorFailures = endpointHealth.get(endpoint)?.consecutiveFailures || 0;
+      endpointHealth.set(endpoint, {
+        lastChecked: new Date().toISOString(),
+        lastSuccess: endpointHealth.get(endpoint)?.lastSuccess,
+        consecutiveFailures: priorFailures + 1,
+        lastError: lastError.message,
+        cooldownUntil: Date.now() + (
+          lastError.message.includes("429") || lastError.message.includes("rate limit")
+            ? 60_000
+            : 30_000
+        ),
+      });
+
+      if (attempt + 1 < attempts) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.min(250 * 2 ** attempt, 2000))
+        );
       }
     }
   }
 
-  throw lastError || new Error("RPC operation failed after retries");
+  throw new Error(
+    `Solana RPC request failed on ${attempts} configured endpoint(s): ${
+      lastError?.message || "unknown RPC error"
+    }`
+  );
 }
 
 export async function getBalance(connection: Connection, pubkey: PublicKey): Promise<number> {
@@ -108,9 +181,10 @@ export async function getSignaturesForAddress(
 export async function getTransaction(
   connection: Connection,
   signature: string
-): Promise<ReturnType<Connection["getTransaction"]>> {
-  return connection.getTransaction(signature, {
+): Promise<Awaited<ReturnType<Connection["getParsedTransaction"]>>> {
+  return connection.getParsedTransaction(signature, {
     maxSupportedTransactionVersion: 0,
+    commitment: "confirmed",
   });
 }
 

@@ -1,5 +1,6 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { TokenInfo } from "@/lib/types";
+import { RpcExecutor } from "@/lib/solana-rpc";
 
 const SPL_TOKEN_PROGRAM = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
@@ -18,7 +19,8 @@ export interface TokenAnalysisResult {
  */
 export async function analyzeTokens(
   connection: Connection,
-  address: string
+  address: string,
+  executeRpc: RpcExecutor = (operation) => operation(connection)
 ): Promise<TokenAnalysisResult> {
   const failedChecks: string[] = [];
   const tokens: TokenInfo[] = [];
@@ -26,12 +28,12 @@ export async function analyzeTokens(
 
   try {
     const [splAccounts, t2022Accounts] = await Promise.all([
-      connection.getParsedTokenAccountsByOwner(pubkey, {
+      executeRpc((rpcConnection) => rpcConnection.getParsedTokenAccountsByOwner(pubkey, {
         programId: new PublicKey(SPL_TOKEN_PROGRAM),
-      }),
-      connection.getParsedTokenAccountsByOwner(pubkey, {
+      })),
+      executeRpc((rpcConnection) => rpcConnection.getParsedTokenAccountsByOwner(pubkey, {
         programId: new PublicKey(TOKEN_2022_PROGRAM),
-      }),
+      })),
     ]);
 
     const allAccounts = [
@@ -41,10 +43,19 @@ export async function analyzeTokens(
 
     for (const { account, is2022 } of allAccounts) {
       const parsed = account.account.data.parsed?.info;
-      if (!parsed) continue;
+      if (!parsed) {
+        failedChecks.push(`token_account_parse:${account.pubkey.toBase58()}`);
+        continue;
+      }
 
       const mintAddress = parsed.mint;
-      const uiAmount = parsed.tokenAmount?.uiAmount ?? 0;
+      const rawAmount = parsed.tokenAmount?.amount;
+      const decimals = parsed.tokenAmount?.decimals;
+      if (typeof rawAmount !== "string" || typeof decimals !== "number") {
+        failedChecks.push(`token_balance_parse:${account.pubkey.toBase58()}`);
+        continue;
+      }
+      const uiAmount = parsed.tokenAmount?.uiAmount ?? Number(rawAmount) / 10 ** decimals;
 
       // Skip zero-balance accounts
       if (uiAmount === 0) continue;
@@ -54,13 +65,19 @@ export async function analyzeTokens(
       const riskIndicators: string[] = [];
 
       try {
-        const mintInfo = await connection.getParsedAccountInfo(new PublicKey(mintAddress));
+        const mintInfo = await executeRpc((rpcConnection) =>
+          rpcConnection.getParsedAccountInfo(new PublicKey(mintAddress))
+        );
         if (mintInfo.value?.data && "parsed" in mintInfo.value.data) {
           const mintData = mintInfo.value.data.parsed?.info;
           if (mintData) {
             mintAuthorityActive = !!mintData.mintAuthority;
             freezeAuthorityActive = !!mintData.freezeAuthority;
+          } else {
+            failedChecks.push(`mint_info:${mintAddress}`);
           }
+        } else {
+          failedChecks.push(`mint_info:${mintAddress}`);
         }
       } catch {
         failedChecks.push(`mint_info:${mintAddress}`);
@@ -77,8 +94,8 @@ export async function analyzeTokens(
         symbol: "UNKNOWN",
         name: "Unknown Token",
         mintAddress,
-        balance: parsed.tokenAmount?.amount?.toString() || "0",
-        decimals: parsed.tokenAmount?.decimals || 0,
+        balance: rawAmount,
+        decimals,
         uiAmount,
         mintAuthorityActive,
         freezeAuthorityActive,

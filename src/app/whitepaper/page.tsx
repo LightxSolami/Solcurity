@@ -46,16 +46,15 @@ export default function WhitepaperPage() {
         <h2 className="text-2xl font-bold text-white mb-4">1. Abstract</h2>
         <div className="prose prose-invert max-w-none">
           <p className="text-white/70 leading-relaxed">
-            Solcurity is an open-source, automated security assessment platform for Solana wallets and smart contracts. 
-            It provides real-time risk analysis by combining on-chain data retrieval, threat intelligence lookups, 
-            behavioral pattern detection, and AI-powered program analysis. The platform consists of three core components:
-            a wallet scanner, an SVM (Solana Virtual Machine) explorer, and a suite of developer tools.
+            Solcurity is an open-source, read-only tool for inspecting public Solana account, token, and recent transaction data.
+            It reports the status and evidence of the checks it can perform. The platform consists of a wallet scanner,
+            an SVM (Solana Virtual Machine) explorer, and a suite of developer tools.
           </p>
           <p className="text-white/70 leading-relaxed mt-4">
-            Unlike traditional security audits that require manual review, Solcurity automates the detection of 
-            common attack vectors: wallet drainers, malicious token authorities, phishing counterparties, 
-            suspicious program interactions, and smart contract vulnerabilities. Results are delivered in seconds 
-            with a 0-100 risk score, detailed findings, and actionable recommendations.
+            Solcurity is not a substitute for a security audit and does not analyze program source code or detect
+            smart-contract vulnerabilities. Authority state may be reported as a risk indicator, but it does not prove
+            malicious activity. A numeric risk score is returned only when all applicable checks are available; scan
+            confidence is reported separately.
           </p>
         </div>
       </section>
@@ -95,7 +94,7 @@ export default function WhitepaperPage() {
                 </span>
                 Wallet Scanner
               </h3>
-              <p className="text-white/60">Enter any Solana address → Get comprehensive risk report in seconds</p>
+              <p className="text-white/60">Inspect public account and bounded recent transaction data with explicit check status</p>
             </div>
             <div className="bg-solana-card border border-white/10 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
@@ -104,7 +103,7 @@ export default function WhitepaperPage() {
                 </span>
                 SVM Explorer
               </h3>
-              <p className="text-white/60">Local/development network analysis with AI-powered program inspection</p>
+              <p className="text-white/60">Inspect selected SVM network data; optional AI summarizes retrieved logs and is not a code audit</p>
             </div>
             <div className="bg-solana-card border border-white/10 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
@@ -137,17 +136,9 @@ export default function WhitepaperPage() {
 
           <h3 className="text-xl font-semibold text-white mb-3 mt-8">RPC Endpoint Strategy</h3>
           <p className="text-white/70 leading-relaxed">
-            Solcurity uses a failover chain for mainnet RPC access. When a user provides a custom RPC endpoint 
-            (Alchemy, QuickNode, Helius), it&apos;s used exclusively. Otherwise, the system rotates through free endpoints:
-          </p>
-          <ol className="list-decimal list-inside text-white/70 space-y-1 mt-2">
-            <li>Alchemy Demo (https://solana-mainnet.g.alchemy.com/v2/demo)</li>
-            <li>Ankr (https://rpc.ankr.com/solana)</li>
-            <li>DRPC (https://solana.drpc.org)</li>
-            <li>Official Mainnet Beta (https://api.mainnet-beta.solana.com)</li>
-          </ol>
-          <p className="text-white/70 leading-relaxed mt-2">
-            Rate limits (429/403) trigger automatic failover with exponential backoff.
+            Wallet scans use server-configured endpoints (`SOLANARPCURLS`, with legacy `SOLANARPCURL` support) and public Mainnet fallbacks.
+            Endpoints are verified against the Mainnet genesis hash. Requests use a timeout, retry with exponential backoff, and endpoint cooldown;
+            failures are surfaced as unavailable checks rather than empty successful results. Client-supplied endpoints are not accepted by wallet scans.
           </p>
         </div>
       </section>
@@ -156,26 +147,26 @@ export default function WhitepaperPage() {
         <h2 className="text-2xl font-bold text-white mb-4">5. Scanning Pipeline</h2>
         <div className="prose prose-invert max-w-none">
           <p className="text-white/70 leading-relaxed">
-            The scan process executes 6 sequential phases, each with RPC failover:
+            The scan process runs independent data checks with Mainnet RPC failover:
           </p>
           <ol className="list-decimal list-inside text-white/70 space-y-4 mt-4">
             <li>
-              <strong>Wallet Analysis</strong> — Balance, existence, token accounts, transaction count, first/last activity
+              <strong>Wallet Analysis</strong> — Account state, balance, and bounded recent signature history; unavailable values remain null
             </li>
             <li>
-              <strong>Transaction Analysis</strong> — Recent 50 transactions parsed for counterparties, program interactions, fees, success status
+              <strong>Transaction Analysis</strong> — Retrieved transactions analyzed using actual balance changes, parsed instructions, and confirmed block times where present
             </li>
             <li>
               <strong>Token Analysis</strong> — SPL & Token-2022 accounts with mint/freeze authority detection, UI amount calculation
             </li>
             <li>
-              <strong>Program Analysis</strong> — Unique program IDs from transactions analyzed for known malicious patterns
+              <strong>Program Analysis</strong> — Unique program IDs observed in retrieved transaction metadata, matched against a local identifier registry
             </li>
             <li>
-              <strong>Threat Intelligence</strong> — Wallet, token mints, and counterparties checked against curated threat database
+              <strong>Threat Intelligence</strong> — Server-side lookup against active, unexpired records from approved sources; no-match and unavailable results remain UNKNOWN absent authoritative negative coverage
             </li>
             <li>
-              <strong>Risk Scoring</strong> — Findings weighted by severity → 0-100 score → risk level (LOW/MODERATE/HIGH/CRITICAL)
+              <strong>Risk Scoring</strong> — Findings weighted by severity and confidence. UNKNOWN is never PASS; the score is withheld when any applicable check is unavailable
             </li>
           </ol>
         </div>
@@ -185,16 +176,15 @@ export default function WhitepaperPage() {
         <h2 className="text-2xl font-bold text-white mb-4">6. Threat Intelligence</h2>
         <div className="prose prose-invert max-w-none">
           <p className="text-white/70 leading-relaxed">
-            Solcurity maintains a curated threat intelligence database with sources and confidence ratings:
+            The application has a local threat-intelligence data structure that supports cited entries. Its malicious-address list is currently empty:
           </p>
           <ul className="list-disc list-inside text-white/70 space-y-2 mt-4">
-            <li><strong>Sources:</strong> Solana Foundation, community reports, known phishing lists, drainer contract signatures</li>
-            <li><strong>Classifications:</strong> phishing, drainer, scam, rugpull, exploit, mixer, sanctioned</li>
-            <li><strong>Confidence:</strong> LOW / MEDIUM / HIGH with source URLs for verification</li>
-            <li><strong>Coverage:</strong> Wallet addresses, token mints, program IDs</li>
+            <li><strong>Current entries:</strong> None; unknown addresses are not classified as malicious</li>
+            <li><strong>Data freshness:</strong> No update timestamp is claimed when a trustworthy timestamp is unavailable</li>
+            <li><strong>Program registry:</strong> Known identifiers are informational and are not a threat feed or safety endorsement</li>
           </ul>
           <p className="text-white/70 leading-relaxed mt-4">
-            All threat intelligence findings include source attribution so users can verify independently.
+            Because the malicious-address list is empty, the threat-intelligence check is UNKNOWN and a clean numeric score is withheld.
           </p>
         </div>
       </section>
@@ -203,7 +193,7 @@ export default function WhitepaperPage() {
         <h2 className="text-2xl font-bold text-white mb-4">7. Risk Scoring Engine</h2>
         <div className="prose prose-invert max-w-none">
           <p className="text-white/70 leading-relaxed">
-            Findings are weighted by severity and aggregated into a 0-100 score:
+            Findings are weighted by severity and confidence. The score starts at 100 and deductions are applied; higher scores indicate fewer detected risks. The score is null if any applicable check is UNKNOWN, and scan confidence is calculated separately from the share of applicable checks completed.
           </p>
           <table className="w-full border-collapse mt-4">
             <thead>
@@ -252,13 +242,16 @@ export default function WhitepaperPage() {
             <li><strong>Token Holdings:</strong> SPL & Token-2022 with parsed balances</li>
             <li><strong>Transaction History:</strong> Parsed logs, fees, success status</li>
             <li><strong>Airdrop:</strong> SOL funding on local/devnet/testnet</li>
-            <li><strong>AI Program Analysis:</strong> Groq-powered security review of transaction logs</li>
-            <li><strong>Comprehensive Account Analysis:</strong> Combined account + tokens + txs → AI assessment</li>
+            <li><strong>AI Log Summary:</strong> Optional summary of retrieved transaction execution logs</li>
+            <li><strong>Account Analysis:</strong> Optional AI summary of retrieved account, token, transaction, or log data</li>
             <li><strong>Program Accounts:</strong> All accounts owned by a program</li>
             <li><strong>Epoch Info:</strong> Current epoch, slot, transaction count, block height</li>
           </ul>
           <p className="text-white/70 leading-relaxed mt-4">
-            Supports three network targets: Local Validator, Devnet, Testnet.
+            AI output summarizes supplied data only; it does not inspect program source code, perform a smart-contract audit, or establish that a program is safe or vulnerable.
+          </p>
+          <p className="text-white/70 leading-relaxed mt-4">
+            Available network targets depend on the configured SVM Explorer network selector. AI output summarizes retrieved data only and is not a security audit.
           </p>
         </div>
       </section>
@@ -304,40 +297,31 @@ export default function WhitepaperPage() {
             <li><strong>No Tracking:</strong> No analytics, cookies, or user fingerprinting</li>
             <li><strong>Open Source:</strong> Full codebase auditable at <a href="https://github.com/LightxSolami/Solcurity" className="text-solana-blue hover:underline" target="_blank" rel="noopener noreferrer">github.com/LightxSolami/Solcurity</a></li>
             <li><strong>Rate Limited:</strong> Per-IP limits prevent abuse</li>
-            <li><strong>Cached Results:</strong> Repeated scans use cached data (5 min TTL)</li>
+            <li><strong>Cached Results:</strong> Complete scan results may be cached; incomplete scans are not cached as successful results</li>
           </ul>
         </div>
       </section>
 
       <section id="roadmap" className="mb-12">
-        <h2 className="text-2xl font-bold text-white mb-4">11. Roadmap</h2>
+        <h2 className="text-2xl font-bold text-white mb-4">11. Current Status & Roadmap</h2>
         <div className="prose prose-invert max-w-none">
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-2 gap-4">
             <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q4 2026</h3>
+              <h3 className="font-bold text-white mb-2">Implemented</h3>
               <ul className="text-white/60 text-sm space-y-1">
-                <li>✅ Wallet Scanner MVP</li>
-                <li>✅ SVM Explorer with AI</li>
-                <li>✅ Developer Tools Suite</li>
-                <li>🔄 Multi-signature wallet support</li>
+                <li>Read-only wallet, token, and bounded recent transaction scans</li>
+                <li>Per-check status and score withholding for incomplete scans</li>
+                <li>Mainnet RPC fallback with endpoint verification and health handling</li>
+                <li>SVM Explorer and developer tools</li>
               </ul>
             </div>
             <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q1 2027</h3>
+              <h3 className="font-bold text-white mb-2">Not yet implemented</h3>
               <ul className="text-white/60 text-sm space-y-1">
-                <li>Real-time monitoring alerts</li>
-                <li>Browser extension</li>
-                <li>API for integrators</li>
-                <li>Enhanced threat intel sources</li>
-              </ul>
-            </div>
-            <div className="bg-solana-card border border-white/10 rounded-xl p-4">
-              <h3 className="font-bold text-white mb-2">Q2 2027+</h3>
-              <ul className="text-white/60 text-sm space-y-1">
-                <li>Formal verification integration</li>
-                <li>DAO/governance security module</li>
-                <li>Mobile app</li>
-                <li>Enterprise dashboard</li>
+                <li>Verified, maintained threat-intelligence feed (the current malicious-address list is empty)</li>
+                <li>Program deployment and upgrade-authority inspection</li>
+                <li>Continuous monitoring and wallet relationship alerts</li>
+                <li>Smart-contract source analysis or auditing</li>
               </ul>
             </div>
           </div>

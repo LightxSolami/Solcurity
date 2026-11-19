@@ -7,6 +7,8 @@ export function SecurityScore({ result }: { result: ScanResult }) {
       case "MODERATE": return "text-risk-moderate bg-risk-moderate/20 border-risk-moderate/30";
       case "HIGH": return "text-risk-high bg-risk-high/20 border-risk-high/30";
       case "CRITICAL": return "text-risk-critical bg-risk-critical/20 border-risk-critical/30";
+      case "INCOMPLETE SCAN": return "text-risk-critical bg-risk-critical/20 border-risk-critical/30";
+      case "UNKNOWN": return "text-white/70 bg-white/10 border-white/20";
     }
   };
 
@@ -17,16 +19,22 @@ export function SecurityScore({ result }: { result: ScanResult }) {
           <div className="text-center md:text-left">
             <p className="text-white/60 text-sm uppercase tracking-wider mb-2">Security Score</p>
             <div className="flex items-baseline justify-center md:justify-start gap-2">
-              <span className="text-5xl md:text-7xl font-bold text-white">{result.score}</span>
-              <span className="text-white/40 text-2xl md:text-3xl">/ 100</span>
+              <span className="text-5xl md:text-7xl font-bold text-white">
+                {result.score === null ? "—" : result.score}
+              </span>
+              {result.score !== null && <span className="text-white/40 text-2xl md:text-3xl">/ 100</span>}
             </div>
           </div>
 
           <div className="text-center">
             <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold ${getRiskColor(result.riskLevel)}`}>
-              {result.riskLevel} RISK
+              {result.riskLevel === "INCOMPLETE SCAN" ? result.riskLevel : `${result.riskLevel} RISK`}
             </span>
-            <p className="mt-2 text-white/50 text-sm">Automated risk assessment</p>
+            <p className="mt-2 text-white/50 text-sm">Risk score and scan confidence are separate</p>
+            <p className="mt-1 text-white/70 text-sm">Scan confidence: {result.scanConfidence}%</p>
+            <p className="mt-1 text-white/50 text-xs">
+              {result.summary.checkCounts.completed} completed · {result.summary.checkCounts.failed} failed · {result.summary.checkCounts.unavailable} unavailable
+            </p>
           </div>
 
           <div className="text-center md:text-right">

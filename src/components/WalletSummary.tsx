@@ -8,12 +8,12 @@ export function WalletSummary({ result }: { result: ScanResult }) {
       <h2 className="text-lg font-semibold text-white mb-4">Wallet Summary</h2>
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         <StatCard label="Address" value={wallet.address.slice(0, 8) + "..." + wallet.address.slice(-6)} monospace />
-        <StatCard label="SOL Balance" value={wallet.solBalance.toFixed(4)} monospace />
-        <StatCard label="Token Accounts" value={wallet.tokenAccounts} />
-        <StatCard label="NFT Count" value={wallet.nftAccounts} />
-        <StatCard label="Transactions" value={wallet.transactionCount} />
-        <StatCard label="First Activity" value={wallet.firstActivity ? new Date(wallet.firstActivity).toLocaleDateString() : "N/A"} />
-        <StatCard label="Last Activity" value={wallet.lastActivity ? new Date(wallet.lastActivity).toLocaleDateString() : "N/A"} />
+        <StatCard label="SOL Balance" value={wallet.solBalance === null ? "Unavailable" : wallet.solBalance.toFixed(4)} monospace />
+        <StatCard label="Token Accounts" value={wallet.tokenAccounts ?? "Unavailable"} />
+        <StatCard label="NFT Count" value={wallet.nftAccounts ?? "Not checked"} />
+        <StatCard label="Signatures Observed (max 1,000)" value={wallet.transactionCount ?? "Unavailable"} />
+        <StatCard label="Oldest in Loaded History" value={formatActivity(wallet.firstActivity, wallet.transactionCount)} />
+        <StatCard label="Latest Observed Activity" value={formatActivity(wallet.lastActivity, wallet.transactionCount)} />
       </div>
 
       <div className="mt-4">
@@ -31,6 +31,12 @@ export function WalletSummary({ result }: { result: ScanResult }) {
       </div>
     </section>
   );
+}
+
+function formatActivity(timestamp: string | undefined, signatureCount: number | null): string {
+  if (timestamp) return new Date(timestamp).toLocaleDateString();
+  if (signatureCount === 0) return "No history";
+  return signatureCount === null ? "Unavailable" : "Timestamp unavailable";
 }
 
 function StatCard({ label, value, monospace = false }: { label: string; value: string | number; monospace?: boolean }) {

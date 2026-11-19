@@ -2,10 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { SvmAccountInfo, SvmTransactionInfo, ProgramAnalysisResult, TokenAccountInfo, EpochInfo } from "@/lib/svm";
-import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel } from "@/lib/svm-network";
+import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel, SVM_RPC_OPTIONS } from "@/lib/svm-network";
 
 interface CheckResponse {
   running: boolean;
+  endpoint?: string;
+  network?: string;
+  latencyMs?: number;
+  epoch?: EpochInfo;
+  endpoints?: {
+    endpoint: string;
+    available: boolean;
+    consecutiveFailures: number;
+  }[];
 }
 
 interface AccountResponse {
@@ -35,15 +44,16 @@ interface ProgramsResponse {
   accounts: { pubkey: string; owner: string; data: string; lamports: number }[];
 }
 
-interface EpochResponse {
-  epoch: EpochInfo | null;
-}
-
 const API_BASE = "/api/svm";
+const MAINNET_RPC_OPTIONS = SVM_RPC_OPTIONS.filter((option) => option.network === "Mainnet");
+const OTHER_RPC_OPTIONS = SVM_RPC_OPTIONS.filter((option) => option.network !== "Mainnet");
 
 export function SvmExplorer() {
   const [rpcUrl, setRpcUrl] = useState(DEFAULT_SVM_RPC_URL);
+  const [activeRpcUrl, setActiveRpcUrl] = useState<string | null>(null);
+  const [rpcHealth, setRpcHealth] = useState<CheckResponse["endpoints"]>([]);
   const [isRunning, setIsRunning] = useState(false);
+  const [isCheckingRpc, setIsCheckingRpc] = useState(true);
   const [loading, setLoading] = useState(false);
   const [pubkey, setPubkey] = useState("");
   const [account, setAccount] = useState<SvmAccountInfo | null>(null);
@@ -64,16 +74,23 @@ export function SvmExplorer() {
   const isMainnet = getSvmNetworkLabel(rpcUrl) === "Mainnet";
 
   const checkSvmStatus = useCallback(async () => {
+    setIsCheckingRpc(true);
     try {
       const res = await fetch(`${API_BASE}?action=check&rpcUrl=${encodeURIComponent(rpcUrl)}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
         setError(err.error || "Failed to check SVM status");
         setIsRunning(false);
+        setActiveRpcUrl(null);
+        setRpcHealth([]);
+        setEpoch(null);
         return;
       }
       const data = await res.json() as CheckResponse;
       setIsRunning(data.running);
+      setActiveRpcUrl(data.endpoint || null);
+      setRpcHealth(data.endpoints || []);
+      setEpoch(data.epoch || null);
       if (!data.running) {
         setError("The selected RPC endpoint is unavailable. Check the endpoint or choose another network.");
       } else {
@@ -81,19 +98,12 @@ export function SvmExplorer() {
       }
     } catch {
       setIsRunning(false);
+      setActiveRpcUrl(null);
+      setRpcHealth([]);
+      setEpoch(null);
       setError("Cannot connect to the selected RPC endpoint.");
-    }
-  }, [rpcUrl]);
-
-  const fetchEpochInfo = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}?action=epoch&rpcUrl=${encodeURIComponent(rpcUrl)}`);
-      if (res.ok) {
-        const data = await res.json() as EpochResponse;
-        setEpoch(data.epoch);
-      }
-    } catch {
-      // Silently handle epoch fetch errors
+    } finally {
+      setIsCheckingRpc(false);
     }
   }, [rpcUrl]);
 
@@ -111,9 +121,11 @@ export function SvmExplorer() {
     setComprehensiveAnalysis(null);
     setAirdropped(null);
     setError(null);
+    setIsRunning(false);
+    setActiveRpcUrl(null);
+    setRpcHealth([]);
     checkSvmStatus();
-    fetchEpochInfo();
-  }, [checkSvmStatus, fetchEpochInfo]);
+  }, [checkSvmStatus]);
 
   async function fetchAccount() {
     if (!pubkey) return;
@@ -231,7 +243,7 @@ export function SvmExplorer() {
     setLoading(true);
     setError(null);
     try {
-      const allLogs = transactions.flatMap((tx) => tx.meta.logMessages);
+      const allLogs = transactions.flatMap((tx) => tx.meta.logMessages || []);
       const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -328,19 +340,18 @@ export function SvmExplorer() {
                 style={{ backgroundColor: "#111133", color: "white" }}
               >
                 <optgroup label="Free Mainnet RPCs" style={{ backgroundColor: "#111133", color: "white" }}>
-                  <option value={DEFAULT_SVM_RPC_URL} style={{ backgroundColor: "#111133", color: "white" }}>Official Mainnet Beta</option>
-                  <option value="https://solana-mainnet.g.alchemy.com/v2/demo" style={{ backgroundColor: "#111133", color: "white" }}>Alchemy Demo</option>
-                  <option value="https://rpc.ankr.com/solana" style={{ backgroundColor: "#111133", color: "white" }}>Ankr</option>
-                  <option value="https://solana.drpc.org" style={{ backgroundColor: "#111133", color: "white" }}>DRPC</option>
-                  <option value="https://solana-mainnet.rpc.extrnode.com" style={{ backgroundColor: "#111133", color: "white" }}>Extrnode</option>
-                  <option value="https://solana-rpc.publicnode.com" style={{ backgroundColor: "#111133", color: "white" }}>PublicNode</option>
-                  <option value="https://solana-mainnet.chainstacklabs.com" style={{ backgroundColor: "#111133", color: "white" }}>Chainstack Labs</option>
-                  <option value="https://solana.api.syndica.io/api-key/free/solana-mainnet" style={{ backgroundColor: "#111133", color: "white" }}>Syndica Free</option>
+                  {MAINNET_RPC_OPTIONS.map((option) => (
+                    <option key={option.url} value={option.url} style={{ backgroundColor: "#111133", color: "white" }}>
+                      {option.label}
+                    </option>
+                  ))}
                 </optgroup>
                 <optgroup label="Local & Testnets" style={{ backgroundColor: "#111133", color: "white" }}>
-                  <option value="http://127.0.0.1:8899" style={{ backgroundColor: "#111133", color: "white" }}>Local Validator (solana-test-validator)</option>
-                  <option value="https://api.devnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Devnet</option>
-                  <option value="https://api.testnet.solana.com" style={{ backgroundColor: "#111133", color: "white" }}>Testnet</option>
+                  {OTHER_RPC_OPTIONS.map((option) => (
+                    <option key={option.url} value={option.url} style={{ backgroundColor: "#111133", color: "white" }}>
+                      {option.network === "Local Validator" ? "Local Validator (solana-test-validator)" : option.label}
+                    </option>
+                  ))}
                 </optgroup>
               </select>
               <p className="mt-2 text-xs leading-5 text-white/45">
@@ -353,10 +364,24 @@ export function SvmExplorer() {
                   ? "bg-solana-green/20 text-solana-green"
                   : "bg-risk-critical/20 text-risk-critical"
               }`}>
-                {isRunning ? "RPC Connected" : "RPC Unavailable"}
+                {isCheckingRpc
+                  ? "Checking RPC…"
+                  : isRunning
+                    ? "RPC Connected"
+                    : "RPC Unavailable"}
               </div>
             </div>
           </div>
+          {isRunning && activeRpcUrl && activeRpcUrl !== rpcUrl && (
+            <p className="mb-4 text-xs text-risk-moderate">
+              Primary RPC unavailable; using same-network fallback: {SVM_RPC_OPTIONS.find((option) => option.url === activeRpcUrl)?.label || "configured fallback"}.
+            </p>
+          )}
+          {isRunning && rpcHealth && rpcHealth.some((endpoint) => endpoint.consecutiveFailures > 0) && (
+            <p className="mb-4 text-xs text-white/45">
+              Endpoint health: {rpcHealth.filter((endpoint) => endpoint.available).length} available · {rpcHealth.filter((endpoint) => !endpoint.available && endpoint.consecutiveFailures > 0).length} recently failed
+            </p>
+          )}
 
           <div className="flex gap-4">
             <div className="flex-1">
@@ -604,17 +629,19 @@ export function SvmExplorer() {
                       {tx.signature.slice(0, 16)}...{tx.signature.slice(-12)}
                     </p>
                     <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      tx.meta.success
-                        ? "bg-solana-green/20 text-solana-green"
-                        : "bg-risk-critical/20 text-risk-critical"
+                      tx.meta.success === null
+                        ? "bg-white/10 text-white/60"
+                        : tx.meta.success
+                          ? "bg-solana-green/20 text-solana-green"
+                          : "bg-risk-critical/20 text-risk-critical"
                     }`}>
-                      {tx.meta.success ? "Success" : "Failed"}
+                      {tx.meta.success === null ? "Details unavailable" : tx.meta.success ? "Success" : "Failed"}
                     </span>
                   </div>
                   <p className="text-white/50 text-xs mb-2">
-                    Slot: {tx.slot} • Fee: {(tx.meta.fee / LAMPORTS_PER_SOL).toFixed(6)} SOL
+                    Slot: {tx.slot} • Fee: {tx.meta.fee === null ? "Unavailable" : `${(tx.meta.fee / LAMPORTS_PER_SOL).toFixed(6)} SOL`}
                   </p>
-                  {tx.meta.logMessages.length > 0 && (
+                  {tx.meta.logMessages && tx.meta.logMessages.length > 0 && (
                     <div className="mt-2">
                       <p className="text-white/50 text-xs mb-1">Logs:</p>
                       <pre className="text-xs text-white/70 bg-black/20 p-2 rounded-lg overflow-x-auto max-h-24 overflow-y-auto">
@@ -773,8 +800,8 @@ export function SvmExplorer() {
                     <div key={i} className="bg-white/5 rounded-lg p-3 text-sm">
                       <div className="flex justify-between">
                         <span className="text-white/60 font-mono">{tx.signature?.slice(0, 16)}...</span>
-                        <span className={tx.meta?.success ? "text-solana-green" : "text-risk-critical"}>
-                          {tx.meta?.success ? "Success" : "Failed"}
+                        <span className={tx.meta?.success === null ? "text-white/50" : tx.meta?.success ? "text-solana-green" : "text-risk-critical"}>
+                          {tx.meta?.success === null ? "Unavailable" : tx.meta?.success ? "Success" : "Failed"}
                         </span>
                       </div>
                     </div>

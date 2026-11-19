@@ -13,11 +13,11 @@ export default function FAQPage() {
       questions: [
         {
           q: "What is Solcurity?",
-          a: "Solcurity is an automated Solana wallet security scanner. Enter any public Solana address to get a comprehensive risk assessment including balance, token holdings, transaction history, threat intelligence matches, and a 0-100 risk score with detailed findings and recommendations."
+          a: "Solcurity is a read-only Solana wallet scanner. It reads public account, token, and recent transaction data and reports check statuses and evidence-backed findings. Risk score and scan confidence are separate; the score is withheld when a check is unavailable."
         },
         {
           q: "Is Solcurity free?",
-          a: "Yes, Solcurity is completely free and open source. The scanner uses free public RPC endpoints with automatic failover. For higher rate limits, you can provide your own RPC endpoint (Alchemy, QuickNode, Helius, etc.) in the scanner's 'Custom RPC URL' field."
+          a: "Solcurity is open source and can use public Solana Mainnet RPC endpoints. Operators can configure multiple server-side endpoints with SOLANARPCURLS (or the legacy SOLANARPCURL). The scanner does not accept arbitrary client-supplied RPC URLs."
         },
         {
           q: "Do I need to connect my wallet?",
@@ -67,15 +67,15 @@ export default function FAQPage() {
       questions: [
         {
           q: "What does the risk score mean?",
-          a: "The 0-100 score aggregates weighted findings:\n- 0-20: LOW — Minimal risks detected\n- 21-50: MODERATE — Some concerns, review recommended\n- 51-80: HIGH — Significant risks, caution advised\n- 81-100: CRITICAL — Severe threats, avoid interaction\n\nEach finding has a severity (CRITICAL/HIGH/MEDIUM/LOW/INFO) with fixed weights. Score = sum of weights, capped at 100."
+          a: "The score starts at 100 and subtracts severity- and confidence-weighted finding deductions. Higher scores indicate fewer detected risks: 90-100 LOW, 70-89 MODERATE, 40-69 HIGH, 0-39 CRITICAL. If any applicable check is UNKNOWN, the numeric score is withheld; critical unavailable checks are labeled INCOMPLETE SCAN. Scan confidence is a separate percentage of checks completed."
         },
         {
           q: "What are 'threat intelligence' findings?",
-          a: "These indicate the scanned address (or its token mints/counterparties) appears in curated threat databases. Sources include Solana Foundation alerts, community reports, known drainer contracts, phishing lists, and sanctioned addresses. Each finding includes the source and a confidence rating (LOW/MEDIUM/HIGH) so you can verify independently."
+          a: "When Supabase is configured, the scanner checks addresses and observed counterparties against active, unexpired records from approved sources. The database is partial and has no authoritative negative-screening provider, so a no-match remains UNKNOWN. Community reports stay pending until a moderator reviews them."
         },
         {
           q: "Why does my wallet show 'active mint/freeze authority'?",
-          a: "This means the token's mint authority or freeze authority hasn't been renounced (set to null). The token creator can still mint new supply or freeze holder accounts. This is common for new tokens but risky for established ones. Not necessarily malicious — some protocols need these for legitimate features — but you should be aware."
+          a: "The RPC reports that the token mint or freeze authority is still set. That authority can change supply or freeze token accounts. Solcurity reports this as a risk indicator, not proof of malicious activity."
         },
         {
           q: "Can I scan multiple wallets at once?",
@@ -92,7 +92,7 @@ export default function FAQPage() {
         },
         {
           q: "How do I use the AI Program Analysis?",
-          a: "1. Enter a program ID or wallet address in the SVM Explorer\n2. Click 'Fetch Transactions' to load recent activity\n3. Click 'AI Analyze Program' for program-specific analysis, OR 'Comprehensive AI Analysis' for full account + tokens + transactions review\n\nThe AI uses Groq's qwen/qwen3.8-27b model (free tier) to assess risk, identify issues, and provide recommendations."
+          a: "The SVM Explorer can send retrieved execution logs or account data to its configured AI provider for a summary. Log analysis is not source-code inspection, a smart-contract audit, or vulnerability detection. Provider failures are reported rather than replaced with a low-risk result."
         },
         {
           q: "Why does AI analysis fail sometimes?",
@@ -109,7 +109,7 @@ export default function FAQPage() {
         },
         {
           q: "Can I self-host Solcurity?",
-          a: "Yes! Clone the repo and deploy:\n\n```bash\ngit clone https://github.com/LightxSolami/Solcurity\ncd Solcurity\nnpm install\nnpm run build\nnpm start\n```\n\nSet environment variables:\n- `GROQ_API_KEY` — For AI features (get free key at console.groq.com)\n- `SOLANARPCURL` — Your mainnet RPC endpoint\n- `RATE_LIMIT_MAX_REQUESTS` — Default 10 per minute per IP"
+          a: "Yes. Clone the repository, install dependencies, and run the Next.js app. Configure SOLANARPCURLS with server-side Mainnet endpoints for scanner failover, and GROQ_API_KEY only if using AI summaries. Never expose provider credentials through NEXT_PUBLIC variables."
         }
       ]
     }

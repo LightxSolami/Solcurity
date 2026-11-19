@@ -18,6 +18,7 @@ function PerpsAppShell() {
       const cleanup = subscribe(selectedMarket);
       return cleanup;
     }
+
   }, [selectedMarket]);
 
   return (
@@ -58,5 +59,21 @@ function PerpsAppShell() {
 }
 
 export default function PerpsPage() {
-  return <PerpsAppShell />;
+  return (
+    <>
+      <div
+        role="status"
+        className="flex flex-col gap-2 border-b border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 sm:flex-row sm:items-center"
+      >
+        <span className="w-fit rounded-full border border-amber-300/30 bg-amber-300/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-200">
+          Beta
+        </span>
+        <p>
+          Demo only — not connected to Solana Mainnet. Orders are not submitted
+          or settled.
+        </p>
+      </div>
+      <PerpsAppShell />
+    </>
+  );
 }

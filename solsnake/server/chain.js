@@ -2,13 +2,15 @@
 // Discriminators and the account layout are checked against the Rust code by `cargo test`.
 import fs from 'node:fs';
 import { Connection, Keypair, PublicKey, SystemProgram, Transaction, TransactionInstruction, sendAndConfirmTransaction } from '@solana/web3.js';
-const D = { create: [107, 2, 184, 145, 70, 142, 17, 165], settle: [71, 124, 117, 96, 191, 217, 116, 24] };
+const D = { create: [107, 2, 184, 145, 70, 142, 17, 165] };
+export const COMMIT_MOVE_DISCRIMINATOR = [27, 16, 69, 212, 175, 110, 123, 189];
+export const REVEAL_MOVE_DISCRIMINATOR = [30, 133, 198, 26, 106, 44, 55, 149];
 const MATCH_DISCRIMINATOR = [87, 187, 102, 98, 236, 52, 127, 39];
 export const DEV_FEE_BPS = 50;
 export const DEVELOPER_WALLET = 'DLbjcTvMHuvENT1336tdSRd9giHzJd5Uwo5WraqQ3k82';
-export const FEES = { '0.05': 50_000_000n, '0.1': 100_000_000n, '0.5': 500_000_000n, '1': 1_000_000_000n };
+export const FEES = { '0.5': 500_000_000n, '1': 1_000_000_000n, '10': 10_000_000_000n };
 const DEVNET_GENESIS_HASH = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
-const MATCH_ACCOUNT_SIZE = 266;
+const MATCH_ACCOUNT_SIZE = 474;
 const u64 = n => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
 const u16 = n => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
 export function load(env = process.env) {
@@ -44,10 +46,26 @@ export async function createMatch(c, matchId, entryFee) {
 export function parseMatch(buf) {
   if (!Buffer.isBuffer(buf) || buf.length !== MATCH_ACCOUNT_SIZE) throw new Error('Invalid match account size.');
   if (!buf.subarray(0, 8).equals(Buffer.from(MATCH_DISCRIMINATOR))) throw new Error('Invalid match account discriminator.');
-  if (buf[255] > 5 || buf[256] > 2) throw new Error('Invalid match account state.');
+  if (buf[255] > 5 || buf[256] > 3) throw new Error('Invalid match account state.');
   const pk = (o) => new PublicKey(buf.subarray(o, o + 32)).toBase58(), count = buf[255];
+  if (buf[473] > 1) throw new Error('Invalid match phase.');
+  const positions = Array.from({ length: 5 }, (_, i) =>
+    Array.from({ length: 3 }, (__, j) => buf.readUInt16LE(266 + i * 6 + j * 2)));
+  const directions = Array.from(buf.subarray(296, 301));
+  const alive = Array.from(buf.subarray(301, 306), value => {
+    if (value > 1) throw new Error('Invalid match player state.');
+    return value === 1;
+  });
+  const commitments = Array.from({ length: 5 }, (_, i) => buf.subarray(306 + i * 32, 338 + i * 32));
+  const committed = commitments.map(commitment => commitment.some(byte => byte !== 0));
+  const revealedMoves = Array.from(buf.subarray(466, 471));
+  if (directions.some(direction => direction > 3)
+    || revealedMoves.some(move => move !== 255 && move > 3)) {
+    throw new Error('Invalid match move state.');
+  }
   return { matchId: buf.readBigUInt64LE(8), authority: pk(16), treasury: pk(48), entryFee: buf.readBigUInt64LE(80), feeBps: buf.readUInt16LE(88),
-    players: Array.from({ length: 5 }, (_, i) => pk(90 + i * 32)).slice(0, count), count, status: ['Open', 'Settled', 'Cancelled'][buf[256]], createdAt: buf.readBigInt64LE(257) };
+    players: Array.from({ length: 5 }, (_, i) => pk(90 + i * 32)).slice(0, count), count, status: ['Open', 'Settled', 'Cancelled', 'Draw'][buf[256]], createdAt: buf.readBigInt64LE(257),
+    positions, directions, alive, committed, revealedMoves, round: buf.readUInt16LE(471), revealing: buf[473] === 1 };
 }
 export async function readMatch(c, gmBase58, expectedMatchId) {
   const a = await c.conn.getAccountInfo(new PublicKey(gmBase58), 'confirmed');
@@ -61,45 +79,4 @@ export async function readMatch(c, gmBase58, expectedMatchId) {
     throw new Error('On-chain match configuration does not match server policy.');
   }
   return match;
-}
-export async function buildSettlement(c, matchId, winner) {
-  const { gm, vault } = pdas(c.programId, matchId), w = new PublicKey(winner);
-  const match = await readMatch(c, gm.toBase58(), matchId);
-  if (match.status !== 'Open' || match.count !== 5 || !match.players.includes(w.toBase58())) {
-    throw new Error('Match is not eligible for settlement.');
-  }
-  const latest = await c.conn.getLatestBlockhash('confirmed');
-  const ix = new TransactionInstruction({ programId: c.programId, data: Buffer.concat([Buffer.from(D.settle), w.toBuffer()]),
-    keys: [{ pubkey: gm, isSigner: false, isWritable: true }, { pubkey: vault, isSigner: false, isWritable: true }, { pubkey: c.kp.publicKey, isSigner: true, isWritable: false },
-      { pubkey: w, isSigner: false, isWritable: true }, { pubkey: c.treasury, isSigner: false, isWritable: true }, { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      ...match.players.map(player => ({ pubkey: new PublicKey(player), isSigner: true, isWritable: false }))] });
-  const transaction = new Transaction({ feePayer: c.kp.publicKey, recentBlockhash: latest.blockhash }).add(ix);
-  return { transaction: transaction.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64'),
-    players: match.players, blockhash: latest.blockhash, lastValidBlockHeight: latest.lastValidBlockHeight };
-}
-export function mergeSettlementApproval(transactionBase64, signedBase64, walletAddress, players) {
-  const wallet = new PublicKey(walletAddress);
-  if (!players.includes(wallet.toBase58())) throw new Error('Wallet is not a participant in this match.');
-  const transaction = Transaction.from(Buffer.from(transactionBase64, 'base64'));
-  const signed = Transaction.from(Buffer.from(signedBase64, 'base64'));
-  if (!transaction.serializeMessage().equals(signed.serializeMessage())) throw new Error('Wallet approval is for a different transaction.');
-  if (!signed.verifySignatures(false)) throw new Error('Invalid transaction signature.');
-  const approval = signed.signatures.find(item => item.publicKey.equals(wallet));
-  if (!approval?.signature) throw new Error('Wallet did not sign the settlement.');
-  const target = transaction.signatures.find(item => item.publicKey.equals(wallet));
-  if (!target) throw new Error('Wallet is not a required settlement signer.');
-  target.signature = Buffer.from(approval.signature);
-  return transaction;
-}
-export async function submitSettlement(c, transaction, players, lastValidBlockHeight) {
-  const expected = new Set(players);
-  const signed = new Set(transaction.signatures.filter(item => item.signature).map(item => item.publicKey.toBase58()));
-  if (players.length !== 5 || expected.size !== 5 || players.some(player => !signed.has(player))) {
-    throw new Error('Every player must approve the settlement.');
-  }
-  transaction.partialSign(c.kp);
-  if (!transaction.verifySignatures()) throw new Error('Settlement is missing a valid player or authority signature.');
-  const signature = await c.conn.sendRawTransaction(transaction.serialize(), { preflightCommitment: 'confirmed' });
-  await c.conn.confirmTransaction({ signature, blockhash: transaction.recentBlockhash, lastValidBlockHeight }, 'confirmed');
-  return signature;
 }

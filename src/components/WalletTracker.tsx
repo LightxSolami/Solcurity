@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import type { ScanResult } from "@/lib/types";
+import { readApiResponse } from "@/lib/api-response";
 
 interface WalletActivity {
   signature: string;
@@ -127,11 +128,10 @@ export function WalletTracker() {
       if (options.until) params.set("until", options.until);
 
       const response = await fetch(`/api/wallet-tracker?${params.toString()}`);
-      const data = (await response.json()) as TrackerResponse & { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error || "Could not retrieve wallet activity.");
-      }
-      return data;
+      return readApiResponse<TrackerResponse>(
+        response,
+        "Could not retrieve wallet activity."
+      );
     },
     []
   );
@@ -152,10 +152,10 @@ export function WalletTracker() {
         body: JSON.stringify({ address }),
         signal: controller.signal,
       });
-      const data = (await response.json()) as ScanResult & { error?: string };
-      if (!response.ok) {
-        throw new Error(data.error || "Wallet security scan failed.");
-      }
+      const data = await readApiResponse<ScanResult>(
+        response,
+        "Wallet security scan failed."
+      );
       if (requestId === scanRequestId.current) setScanResult(data);
     } catch (scanRequestError) {
       if (!controller.signal.aborted && requestId === scanRequestId.current) {
@@ -183,7 +183,7 @@ export function WalletTracker() {
     setSelectedActivitySignature(null);
     setBalance(null);
     setScanResult(null);
-    await scanWallet(address);
+    void scanWallet(address);
     latestSignature.current = null;
     backlog.current = null;
     try {
@@ -458,14 +458,19 @@ export function WalletTracker() {
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/40">Wallet security scan</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
-                  <p className="font-mono text-3xl font-semibold text-white">{scanResult.score}<span className="text-base text-white/40"> / 100</span></p>
+                  <p className="font-mono text-3xl font-semibold text-white">
+                    {scanResult.score === null ? "—" : scanResult.score}
+                    {scanResult.score !== null && <span className="text-base text-white/40"> / 100</span>}
+                  </p>
                   <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-                    {scanResult.riskLevel} RISK
+                    {scanResult.riskLevel === "INCOMPLETE SCAN" ? scanResult.riskLevel : `${scanResult.riskLevel} RISK`}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-white/55">
                   {scanResult.summary.totalFindings} findings · {scanResult.summary.criticalCount} critical · {scanResult.summary.highCount} high
-                  {scanResult.summary.partialScan ? " · Partial scan (some RPC checks unavailable)" : ""}
+                  {scanResult.summary.partialScan
+                    ? ` · ${scanResult.summary.checkCounts.completed} completed, ${scanResult.summary.checkCounts.failed} failed, ${scanResult.summary.checkCounts.unavailable} unavailable checks`
+                    : ` · ${scanResult.scanConfidence}% scan confidence`}
                 </p>
               </div>
               <a

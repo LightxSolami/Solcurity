@@ -1,0 +1,10 @@
+C:\Users\user\Desktop\Solcurity\solsnake\target-sbf\debug\deps\libsolana_frozen_abi-46e872a34061df1c.rmeta: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_digester.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_example.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\hash.rs
+
+C:\Users\user\Desktop\Solcurity\solsnake\target-sbf\debug\deps\libsolana_frozen_abi-46e872a34061df1c.rlib: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_digester.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_example.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\hash.rs
+
+C:\Users\user\Desktop\Solcurity\solsnake\target-sbf\debug\deps\solana_frozen_abi-46e872a34061df1c.d: C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\lib.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_digester.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_example.rs C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\hash.rs
+
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\lib.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_digester.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\abi_example.rs:
+C:\Users\user\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\solana-frozen-abi-1.18.26\src\hash.rs:

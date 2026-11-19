@@ -1,0 +1,1 @@
+C:\Users\user\Desktop\Solcurity\solsnake\target-sbf\sbf-solana-solana\release\solsnake_escrow.so: \\?\C:\Users\user\Desktop\Solcurity\solsnake\programs\solsnake_escrow\src\lib.rs \\?\C:\Users\user\Desktop\Solcurity\solsnake\programs\solsnake_escrow\src\onchain.rs

@@ -1,8 +1,8 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import {
   getBalance,
-  getTransactionCount,
   getSignaturesForAddress,
+  RpcExecutor,
 } from "@/lib/solana-rpc";
 import { SolanaWalletInfo } from "@/lib/types";
 
@@ -18,46 +18,57 @@ export interface WalletAnalysisResult {
  */
 export async function analyzeWallet(
   connection: Connection,
-  address: string
+  address: string,
+  executeRpc: RpcExecutor = (operation) => operation(connection)
 ): Promise<WalletAnalysisResult> {
   const failedChecks: string[] = [];
   const pubkey = new PublicKey(address);
 
   const wallet: SolanaWalletInfo = {
     address,
-    exists: false,
-    solBalance: 0,
-    lamports: 0,
-    tokenAccounts: 0,
-    nftAccounts: 0,
-    transactionCount: 0,
+    exists: null,
+    solBalance: null,
+    lamports: null,
+    tokenAccounts: null,
+    nftAccounts: null,
+    transactionCount: null,
   };
 
   let signatures: Awaited<ReturnType<Connection["getSignaturesForAddress"]>> = [];
 
-  // 1. Balance + existence
+  // 1. Account state
   try {
-    const balance = await getBalance(connection, pubkey);
+    const accountInfo = await executeRpc((rpcConnection) =>
+      rpcConnection.getAccountInfo(pubkey, "confirmed")
+    );
+    wallet.exists = accountInfo !== null;
+  } catch (err) {
+    failedChecks.push("account_state");
+  }
+
+  // 2. Balance
+  try {
+    const balance = await executeRpc((rpcConnection) => getBalance(rpcConnection, pubkey));
     wallet.solBalance = balance;
     wallet.lamports = Math.floor(balance * 1e9);
-    wallet.exists = true;
   } catch (err) {
     failedChecks.push("sol_balance");
   }
 
-  // 2. Signatures (history) — used for tx count and first/last activity
+  // 3. Signatures (history) — used for observed count and activity bounds
   try {
-    signatures = await getSignaturesForAddress(connection, pubkey, 1000);
-    console.log(`Fetched ${signatures.length} signatures for ${address}`);
+    signatures = await executeRpc((rpcConnection) =>
+      getSignaturesForAddress(rpcConnection, pubkey, 1000)
+    );
     wallet.transactionCount = signatures.length;
 
     if (signatures.length > 0) {
       const mostRecent = signatures[0];
       const oldest = signatures[signatures.length - 1];
-      if (mostRecent.blockTime) {
+      if (typeof mostRecent.blockTime === "number") {
         wallet.lastActivity = new Date(mostRecent.blockTime * 1000).toISOString();
       }
-      if (oldest.blockTime) {
+      if (typeof oldest.blockTime === "number") {
         wallet.firstActivity = new Date(oldest.blockTime * 1000).toISOString();
         wallet.approximateAgeDays = Math.floor(
           (Date.now() - oldest.blockTime * 1000) / (1000 * 60 * 60 * 24)
@@ -69,17 +80,18 @@ export async function analyzeWallet(
     failedChecks.push("transaction_history");
   }
 
-  // 3. Token accounts (SPL + Token-2022)
+  // 4. Token accounts (SPL + Token-2022)
   try {
     const [spl, t2022] = await Promise.all([
-      connection.getParsedTokenAccountsByOwner(pubkey, {
+      executeRpc((rpcConnection) => rpcConnection.getParsedTokenAccountsByOwner(pubkey, {
         programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-      }),
-      connection.getParsedTokenAccountsByOwner(pubkey, {
+      })),
+      executeRpc((rpcConnection) => rpcConnection.getParsedTokenAccountsByOwner(pubkey, {
         programId: new PublicKey("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"),
-      }),
+      })),
     ]);
     wallet.tokenAccounts = spl.value.length + t2022.value.length;
+    wallet.nftAccounts = null;
   } catch (err) {
     failedChecks.push("token_accounts");
   }

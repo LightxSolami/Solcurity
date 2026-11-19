@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountInfo, getRecentTransactions, airdropSol, analyzeProgramLogs, getProgramAccounts, isSvmRunning, getTokenAccounts, getEpochInfo } from "@/lib/svm";
-import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel } from "@/lib/svm-network";
+import { getAccountInfo, getRecentTransactions, airdropSol, analyzeProgramLogs, getProgramAccounts, getTokenAccounts, getSvmHealth } from "@/lib/svm";
+import { DEFAULT_SVM_RPC_URL, getSvmNetworkLabel, isSupportedSvmRpcUrl } from "@/lib/svm-network";
+import { SolanaAddressSchema } from "@/lib/validators";
 import { z } from "zod";
 
 const SvmActionSchema = z.object({
@@ -15,10 +16,10 @@ const SvmActionSchema = z.object({
     "tokens",
     "epoch",
   ]),
-  pubkey: z.string().optional(),
+  pubkey: SolanaAddressSchema.optional(),
   amount: z.number().optional(),
-  rpcUrl: z.string().optional(),
-  programId: z.string().optional(),
+  rpcUrl: z.string().url().optional(),
+  programId: SolanaAddressSchema.optional(),
   logs: z.array(z.string()).optional(),
 });
 
@@ -29,14 +30,33 @@ export async function GET(request: NextRequest) {
 
   if (action === "check") {
     const rpcUrl = searchParams.rpcUrl || DEFAULT_SVM_RPC_URL;
-    const running = await isSvmRunning(rpcUrl);
-    return NextResponse.json({ running });
+    if (!isSupportedSvmRpcUrl(rpcUrl)) {
+      return NextResponse.json({ error: "Unsupported RPC endpoint." }, { status: 400 });
+    }
+    try {
+      const health = await getSvmHealth(rpcUrl);
+      return NextResponse.json(health);
+    } catch (error) {
+      console.error("SVM RPC health check failed:", error);
+      return NextResponse.json(
+        { running: false, error: "All configured RPC endpoints for this network are unavailable." },
+        { status: 502 }
+      );
+    }
   }
 
   if (action === "epoch") {
     const rpcUrl = searchParams.rpcUrl || DEFAULT_SVM_RPC_URL;
-    const epoch = await getEpochInfo(rpcUrl);
-    return NextResponse.json({ epoch });
+    if (!isSupportedSvmRpcUrl(rpcUrl)) {
+      return NextResponse.json({ error: "Unsupported RPC endpoint." }, { status: 400 });
+    }
+    try {
+      const health = await getSvmHealth(rpcUrl);
+      return NextResponse.json({ epoch: health.epoch, endpoint: health.endpoint });
+    } catch (error) {
+      console.error("SVM epoch request failed:", error);
+      return NextResponse.json({ error: "RPC epoch data is unavailable." }, { status: 502 });
+    }
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -56,12 +76,15 @@ export async function POST(request: NextRequest) {
 
     const data = parsed.data;
     const rpcUrl = data.rpcUrl || DEFAULT_SVM_RPC_URL;
+    if (!isSupportedSvmRpcUrl(rpcUrl)) {
+      return NextResponse.json({ error: "Unsupported RPC endpoint." }, { status: 400 });
+    }
     const network = getSvmNetworkLabel(rpcUrl);
 
     switch (data.action) {
       case "check": {
-        const running = await isSvmRunning(rpcUrl);
-        return NextResponse.json({ running });
+        const health = await getSvmHealth(rpcUrl);
+        return NextResponse.json(health);
       }
 
       case "account": {
@@ -69,7 +92,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "pubkey required" }, { status: 400 });
         }
         const info = await getAccountInfo(data.pubkey, rpcUrl);
-        const tokens = info ? await getTokenAccounts(data.pubkey, rpcUrl) : [];
+        const tokens = await getTokenAccounts(data.pubkey, rpcUrl);
         return NextResponse.json({ account: info, tokens, network });
       }
 
@@ -122,7 +145,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "pubkey required" }, { status: 400 });
         }
         const info = await getAccountInfo(data.pubkey, rpcUrl);
-        const tokens = info ? await getTokenAccounts(data.pubkey, rpcUrl) : [];
+        const tokens = await getTokenAccounts(data.pubkey, rpcUrl);
         const txs = await getRecentTransactions(data.pubkey, 20, rpcUrl);
 
         // Use Groq for comprehensive analysis
@@ -162,7 +185,7 @@ Data Size: ${info.dataSize} bytes
     Slot: ${tx.slot}
     Fee: ${tx.meta.fee} lamports
     Success: ${tx.meta.success}
-    Logs: ${tx.meta.logMessages.slice(0, 3).join("; ")}${tx.meta.logMessages.length > 3 ? "..." : ""}
+    Logs: ${tx.meta.logMessages ? `${tx.meta.logMessages.slice(0, 3).join("; ")}${tx.meta.logMessages.length > 3 ? "..." : ""}` : "unavailable"}
 `).join("") : "No recent transactions";
 
         const systemPrompt = `You are a Solana blockchain security analyst. Analyze the provided account data and provide a comprehensive security assessment.
@@ -194,12 +217,14 @@ Format your response as JSON with these keys:
         } catch (groqError: any) {
           console.error("Groq API error:", groqError);
           return NextResponse.json({ 
-            error: "AI analysis failed", 
-            details: groqError.message || String(groqError) 
+            error: "AI analysis failed. Verify the provider configuration and retry.",
           }, { status: 502 });
         }
 
-        const response = chatCompletion.choices[0]?.message?.content || "{}";
+        const response = chatCompletion.choices[0]?.message?.content;
+        if (!response) {
+          return NextResponse.json({ error: "AI analysis returned an empty response." }, { status: 502 });
+        }
         let parsed: any;
         try {
           parsed = JSON.parse(response);
@@ -225,8 +250,8 @@ Format your response as JSON with these keys:
   } catch (error) {
     console.error("SVM API error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+      { error: "SVM request failed; verify RPC availability and retry." },
+      { status: 502 }
     );
   }
 }

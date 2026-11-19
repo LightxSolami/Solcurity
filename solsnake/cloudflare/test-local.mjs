@@ -12,6 +12,10 @@ try {
   const page = await fetch(pageUrl);
   assert.equal(page.ok, true);
   assert.match(await page.text(), /SOLSNAKE ONLINE/);
+  const configUrl = new URL("/config", pageUrl);
+  const config = await fetch(configUrl);
+  assert.equal(config.ok, true);
+  assert.deepEqual(await config.json(), { paid: false, cluster: null });
 
   socket = new WebSocket(serverUrl);
   await new Promise((resolve, reject) => {

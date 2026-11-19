@@ -1,4 +1,10 @@
-import { SecurityFinding, Severity, ScanResult, RiskLevel } from "@/lib/types";
+import {
+  SecurityFinding,
+  Severity,
+  ScanCheck,
+  ScanResult,
+  RiskLevel,
+} from "@/lib/types";
 
 const SEVERITY_WEIGHTS: Record<Severity, number> = {
   CRITICAL: 25,
@@ -40,7 +46,21 @@ export function scoreToRiskLevel(score: number): RiskLevel {
   return "CRITICAL";
 }
 
-export function generateSummary(findings: SecurityFinding[], partialScan = false, failedChecks: string[] = []) {
+export function getScanConfidence(checks: ScanCheck[]): number {
+  const applicableChecks = checks.filter((check) => check.status !== "NOT_APPLICABLE");
+  if (applicableChecks.length === 0) return 0;
+  const completed = applicableChecks.filter(
+    (check) => check.status === "PASS" || check.status === "FAIL"
+  ).length;
+  return Math.round((completed / applicableChecks.length) * 100);
+}
+
+export function generateSummary(
+  findings: SecurityFinding[],
+  partialScan = false,
+  failedChecks: string[] = [],
+  checks: ScanCheck[] = []
+) {
   return {
     totalFindings: findings.length,
     criticalCount: findings.filter((f) => f.severity === "CRITICAL").length,
@@ -50,6 +70,12 @@ export function generateSummary(findings: SecurityFinding[], partialScan = false
     infoCount: findings.filter((f) => f.severity === "INFO").length,
     partialScan,
     failedChecks,
+    checkCounts: {
+      completed: checks.filter((check) => check.status === "PASS" || check.status === "FAIL").length,
+      failed: checks.filter((check) => check.status === "FAIL").length,
+      unavailable: checks.filter((check) => check.status === "UNKNOWN").length,
+      notApplicable: checks.filter((check) => check.status === "NOT_APPLICABLE").length,
+    },
   };
 }
 

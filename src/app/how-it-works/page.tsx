@@ -23,12 +23,11 @@ export default function HowItWorksPage() {
           <section className="mb-12">
             <h2 className="text-2xl font-semibold text-white mb-4">What the Scanner Checks</h2>
             <ul className="space-y-3 text-white/80">
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Wallet existence & balance:</strong> SOL balance, token account count, transaction count, approximate wallet age.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Transaction history:</strong> Recent transactions analyzed for suspicious transfers, interactions with flagged addresses, unusual patterns.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Token holdings:</strong> All SPL Token and Token-2022 holdings with mint/freeze authority status, risk indicators.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Program interactions:</strong> Solana programs the wallet has interacted with, classified as known/unknown/suspicious/malicious.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Threat intelligence:</strong> Addresses, tokens, and programs checked against curated threat-intelligence sources.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Drainer indicators:</strong> Patterns that could indicate wallet-drainer activity.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Wallet account:</strong> Account existence and SOL balance from the selected Mainnet RPC. Values remain unavailable if the RPC does not return them.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Recent transactions:</strong> Retrieved signatures and transaction metadata, including observed SOL/token balance changes, parsed instructions, and confirmed block times where available.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Token holdings:</strong> Parsed SPL Token and Token-2022 accounts with available mint/freeze authority information.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Program interactions:</strong> Unique program IDs observed in retrieved transaction metadata. IDs absent from the local registry are labeled unknown, not malicious.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Threat intelligence:</strong> Server-side database lookups against active records from approved sources. Empty, partial, unavailable, stale, disputed, or revoked data never produces PASS; unmatched addresses remain UNKNOWN.</li>
             </ul>
           </section>
 
@@ -40,15 +39,16 @@ export default function HowItWorksPage() {
               <li className="flex gap-3"><span className="text-risk-critical">▸</span> <strong>Future transactions:</strong> Only historical data is analyzed.</li>
               <li className="flex gap-3"><span className="text-risk-critical">▸</span> <strong>Smart contract code:</strong> Program code is not audited.</li>
               <li className="flex gap-3"><span className="text-risk-critical">▸</span> <strong>Real-time monitoring:</strong> This is a point-in-time scan.</li>
+              <li className="flex gap-3"><span className="text-risk-critical">▸</span> <strong>Complete chain history:</strong> The scanner loads a bounded recent history, not every transaction in the wallet&apos;s lifetime.</li>
             </ul>
           </section>
 
           <section className="mb-12">
             <h2 className="text-2xl font-semibold text-white mb-4">Data Sources</h2>
             <ul className="space-y-3 text-white/80">
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Solana RPC:</strong> Public mainnet RPC endpoint (configurable via SOLANARPCURL).</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Threat intelligence:</strong> Curated dataset with source citations (see Security page).</li>
-              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Solana Program Library:</strong> Verified program IDs from official documentation.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Solana RPC:</strong> Server-configured Mainnet endpoints (SOLANARPCURLS; legacy SOLANARPCURL supported), verified against Mainnet before use, with timeout and fallback.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Threat intelligence:</strong> Cited, moderated records in the server-side database. The dataset is not comprehensive and no authoritative negative-screening provider is currently implemented.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Program registry:</strong> A local list of program identifiers. Registry presence is not a security endorsement.</li>
             </ul>
           </section>
 
@@ -59,7 +59,7 @@ export default function HowItWorksPage() {
               <li className="flex gap-3"><span className="text-risk-moderate">▸</span> <strong>Active mint/freeze authority:</strong> Common in legitimate tokens (e.g., stablecoins).</li>
               <li className="flex gap-3"><span className="text-risk-moderate">▸</span> <strong>Unsolicited tokens/NFTs:</strong> Receiving them does not mean compromise.</li>
               <li className="flex gap-3"><span className="text-risk-moderate">▸</span> <strong>High transaction volume:</strong> Not automatically suspicious.</li>
-              <li className="flex gap-3"><span className="text-risk-moderate">▸</span> <strong>Confidence levels:</strong> Every finding includes LOW/MEDIUM/HIGH confidence.</li>
+              <li className="flex gap-3"><span className="text-risk-moderate">▸</span> <strong>Authority indicators:</strong> Active mint or freeze authority is a risk indicator, not proof of malicious activity.</li>
             </ul>
           </section>
 
@@ -69,6 +69,9 @@ export default function HowItWorksPage() {
               The security score (0–100) is an <strong>automated risk assessment</strong> based on publicly available
               blockchain data. It reflects the <em>weight of evidence</em> from the checks we perform. It does not
               account for:
+            </p>
+            <p className="text-white/80 mb-4">
+              Each check reports PASS, FAIL, UNKNOWN, or NOT_APPLICABLE. UNKNOWN is never treated as PASS. The score is withheld if any applicable check is unavailable; scan confidence is displayed separately. Without fresh authoritative negative coverage, the threat-intelligence check remains UNKNOWN rather than producing a clean score.
             </p>
             <ul className="space-y-2 text-white/80 list-disc list-inside">
               <li>Private key compromise that hasn&apos;t resulted in on-chain activity yet</li>

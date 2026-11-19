@@ -1,0 +1,4 @@
+logrotate is not supported on this platform
+Ledger location: .anchor/test-ledger
+Log: .anchor/test-ledger\validator.log
+Initializing...

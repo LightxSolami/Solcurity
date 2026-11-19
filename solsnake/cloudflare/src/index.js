@@ -22,6 +22,13 @@ export default {
       return new Response("Method not allowed", { status: 405 });
     }
 
+    if (url.pathname === "/config") {
+      return Response.json(
+        { paid: false, cluster: null },
+        { headers: { "cache-control": "no-store" } }
+      );
+    }
+
     if (url.pathname === "/") {
       url.pathname = "/online.html";
     }

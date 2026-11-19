@@ -21,10 +21,20 @@ export function ProgramInteractions({ programs }: ProgramInteractionsProps) {
     const colors = {
       known: "bg-solana-blue/20 text-solana-blue",
       unknown: "bg-white/10 text-white/60",
-      suspicious: "bg-risk-high/20 text-risk-high",
-      malicious: "bg-risk-critical/20 text-risk-critical",
     };
-    return <span className={`px-2 py-0.5 rounded text-xs ${colors[classification]}`}>{classification}</span>;
+    const labels = { known: "Listed", unknown: "Unlisted" };
+    const descriptions = {
+      known: "Program ID is in the local registry; this is not a security assessment.",
+      unknown: "Program ID is not in the local registry; this does not imply malicious behavior.",
+    };
+    return (
+      <span
+        className={`px-2 py-0.5 rounded text-xs ${colors[classification]}`}
+        title={descriptions[classification]}
+      >
+        {labels[classification]}
+      </span>
+    );
   };
 
   return (
@@ -45,7 +55,9 @@ export function ProgramInteractions({ programs }: ProgramInteractionsProps) {
             </div>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-white/60">{program.interactionCount} interactions</span>
-              <span className="text-white/50">Last: {new Date(program.lastInteraction).toLocaleDateString()}</span>
+              <span className="text-white/50">
+                Last: {program.lastInteraction ? new Date(program.lastInteraction).toLocaleDateString() : "Unavailable"}
+              </span>
               {getClassificationBadge(program.classification)}
             </div>
           </div>

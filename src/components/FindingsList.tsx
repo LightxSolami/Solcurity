@@ -20,6 +20,11 @@ const CONFIDENCE_COLORS: Record<SecurityFinding["confidence"], string> = {
   LOW: "bg-risk-low/20 text-risk-low",
 };
 
+const INTEL_STATUS_COLORS = {
+  confirmed: "bg-risk-critical/20 text-risk-critical",
+  suspected: "bg-risk-moderate/20 text-risk-moderate",
+} as const;
+
 export function FindingsList({ findings, detailed = false }: FindingsListProps) {
   if (findings.length === 0) {
     return (
@@ -78,9 +83,16 @@ function FindingCard({ finding, detailed }: { finding: SecurityFinding; detailed
             <h4 className="font-semibold text-white mb-1">{finding.title}</h4>
             <p className="text-white/70 text-sm">{finding.description}</p>
           </div>
-          <span className={`px-2 py-0.5 rounded text-xs ${CONFIDENCE_COLORS[finding.confidence]}`}>
-            {finding.confidence} Confidence
-          </span>
+          <div className="flex flex-col items-end gap-2">
+            {finding.threatIntelStatus && (
+              <span className={`px-2 py-0.5 rounded text-xs uppercase ${INTEL_STATUS_COLORS[finding.threatIntelStatus]}`}>
+                {finding.threatIntelStatus}
+              </span>
+            )}
+            <span className={`px-2 py-0.5 rounded text-xs ${CONFIDENCE_COLORS[finding.confidence]}`}>
+              {finding.confidence} Confidence
+            </span>
+          </div>
         </div>
       </div>
     );
@@ -94,6 +106,11 @@ function FindingCard({ finding, detailed }: { finding: SecurityFinding; detailed
           <p className="text-white/70 text-sm">{finding.description}</p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
+          {finding.threatIntelStatus && (
+            <span className={`px-2 py-0.5 rounded text-xs uppercase ${INTEL_STATUS_COLORS[finding.threatIntelStatus]}`}>
+              {finding.threatIntelStatus}
+            </span>
+          )}
           <span className={`px-2 py-0.5 rounded text-xs ${CONFIDENCE_COLORS[finding.confidence]}`}>
             {finding.confidence} Confidence
           </span>
@@ -106,7 +123,24 @@ function FindingCard({ finding, detailed }: { finding: SecurityFinding; detailed
         <div>
           <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Evidence</p>
           <p className="text-white/80 font-mono text-sm bg-white/5 p-3 rounded-lg whitespace-pre-wrap">{finding.evidence}</p>
+          {finding.sourceUrl && (
+            <a
+              href={finding.sourceUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-2 text-solana-blue text-sm hover:underline"
+            >
+              Open evidence source
+            </a>
+          )}
         </div>
+        {(finding.firstObservedAt || finding.lastVerifiedAt || finding.expiresAt) && (
+          <div className="grid gap-2 text-sm text-white/60 sm:grid-cols-3">
+            {finding.firstObservedAt && <p>First observed: {finding.firstObservedAt}</p>}
+            {finding.lastVerifiedAt && <p>Last verified: {finding.lastVerifiedAt}</p>}
+            {finding.expiresAt && <p>Expires: {finding.expiresAt}</p>}
+          </div>
+        )}
         <div>
           <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Recommendation</p>
           <p className="text-white/80 text-sm">{finding.recommendation}</p>
