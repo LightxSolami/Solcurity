@@ -136,21 +136,6 @@ export default function RootLayout({
                       className="w-5 h-5"
                     />
                   </a>
-                  <a
-                    href="https://github.com/LightxSolami/Solcurity"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="View on GitHub"
-                    className="flex items-center justify-center w-9 h-9 rounded-lg bg-white/5 border border-white/10 transition-all hover:bg-white/10 hover:border-white/20"
-                  >
-                    <Image
-                      src="/icons/git.png"
-                      alt="GitHub"
-                      width={24}
-                      height={24}
-                      className="w-5 h-5"
-                    />
-                  </a>
                 </div>
               </div>
               {footerGroups.map((group) => (
@@ -194,15 +179,6 @@ export default function RootLayout({
                   aria-label="Telegram"
                 >
                   <img src="/icons/tg.webp" alt="Telegram" width={16} height={16} className="w-4 h-4" />
-                </a>
-                <a
-                  href="https://github.com/LightxSolami/Solcurity"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/40 hover:text-white transition-colors"
-                  aria-label="GitHub"
-                >
-                  <img src="/icons/git.png" alt="GitHub" width={16} height={16} className="w-4 h-4" />
                 </a>
               </div>
             </div>
