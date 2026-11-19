@@ -180,13 +180,18 @@ Data Size: ${info.dataSize} bytes
     Owner: ${t.owner}
 `).join("") : "No token accounts found";
 
-        const txSummary = txs.length > 0 ? txs.map(tx => `
+        const txSummary = txs.length > 0 ? txs.map(tx => {
+          const logs = tx.meta.logMessages
+            ? `${tx.meta.logMessages.slice(0, 3).join("; ")}${tx.meta.logMessages.length > 3 ? "..." : ""}`
+            : "unavailable";
+          return `
   - Signature: ${tx.signature.slice(0, 16)}...
     Slot: ${tx.slot}
     Fee: ${tx.meta.fee} lamports
     Success: ${tx.meta.success}
-    Logs: ${tx.meta.logMessages ? `${tx.meta.logMessages.slice(0, 3).join("; ")}${tx.meta.logMessages.length > 3 ? "..." : ""}` : "unavailable"}
-`).join("") : "No recent transactions";
+    Logs: ${logs}
+`;
+        }).join("") : "No recent transactions";
 
         const systemPrompt = `You are a Solana blockchain security analyst. Analyze the provided account data and provide a comprehensive security assessment.
 All balance values are specific to the named RPC network. Never describe a Devnet or Testnet balance as a Mainnet or total wallet balance. Do not state, estimate, round, or reinterpret SOL balances or token amounts; the exact RPC values are displayed separately by the application. Do not infer dormancy from missing transaction data.
