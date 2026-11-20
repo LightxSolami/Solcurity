@@ -136,9 +136,9 @@ The MCP tool scans public Mainnet data, is rate-limited, and never signs or send
 
 ### AI Debate setup
 
-The AI Debate dashboard at `/ai-news` is linked from the home dashboard and main navigation. It publishes debates every six hours using the Vercel Cron entry in `vercel.json`. Configure at least one server-side provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY`, or `TOGETHER_API_KEY`) and set `CRON_SECRET` in Vercel so scheduled requests are authenticated. Do not expose provider keys with `NEXT_PUBLIC_` prefixes.
+The AI Debate dashboard at `/ai-news` is linked from the home dashboard and main navigation. It publishes debates once daily using the Vercel Cron entry in `vercel.json`, which is compatible with Vercel Hobby. The cron sends an authenticated `GET` request and requires `CRON_SECRET` in Vercel. Configure at least one server-side provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY`, or `TOGETHER_API_KEY`). Do not expose provider keys with `NEXT_PUBLIC_` prefixes. Telegram alerts continue to run every five minutes through the included GitHub Actions workflow.
 
-Debate history requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/migrations/202611200001_ai_news_discussions.sql` to the Supabase project before enabling debate history. The Vercel job runs every six hours, as configured in `vercel.json`. AI output may be inaccurate and is not financial, security, or investment advice.
+Debate history requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/migrations/202611200001_ai_news_discussions.sql` to the Supabase project before enabling debate history. AI output may be inaccurate and is not financial, security, or investment advice.
 
 ### Telegram bot setup
 

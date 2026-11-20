@@ -78,11 +78,15 @@ export async function GET(request: NextRequest) {
   const action = searchParams.get("action");
 
   if (!action) {
+    if (CRON_SECRETS.length > 0 && isAuthorized(request)) {
+      return POST(request);
+    }
+
     return NextResponse.json({
       ok: true,
       message: "AI News Discussion Cron Endpoint",
       config: {
-        schedule: "0 */6 * * *",
+        schedule: "0 6 * * *",
         maxNewsItems: MAX_NEWS_ITEMS,
         quickMode: QUICK_MODE,
       },

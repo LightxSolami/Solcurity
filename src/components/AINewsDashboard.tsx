@@ -114,7 +114,7 @@ export function AINewsDashboard() {
                 Solana intelligence / AI debate
               </span>
               <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
-                Updates every 6 hours
+                Updates daily
               </span>
             </div>
             <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
@@ -303,7 +303,7 @@ export function AINewsDashboard() {
               <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#62c99b]/75">No briefing published</p>
               <h2 className="mt-3 text-2xl font-semibold text-white">The panel is waiting for its first session</h2>
               <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/50">
-                Scheduled debates run every six hours. Explore the latest Solana headlines while the next session is prepared.
+                Scheduled debates run once per day on the free hosting plan. Explore the latest Solana headlines in the meantime.
               </p>
               <button
                 onClick={() => setActiveTab("news")}
