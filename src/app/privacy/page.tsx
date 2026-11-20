@@ -64,7 +64,7 @@ export default function PrivacyPage() {
             <ul className="space-y-3 text-white/80">
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Solana RPC endpoint:</strong> To fetch public blockchain data (configurable via SOLANARPCURL).</li>
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Supabase threat database:</strong> When configured, the scanner sends the scanned address and observed counterparties/program IDs to the project’s Supabase service for matching. These identifiers are not inserted as scan records by Solcurity; service-provider request logs may be subject to Supabase’s policies.</li>
-              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> <strong>Telegram (optional):</strong> Bot commands and alert notifications are sent through Telegram. If you enable alerts, the wallet address and Telegram user/chat IDs are stored in the project's Supabase database until you remove the alert; Telegram's data handling policies also apply to your chats.</li>
+              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> <strong>Telegram (optional):</strong> Bot commands and alert notifications are sent through Telegram. If you enable alerts, the wallet address and Telegram user/chat IDs are stored in the project&apos;s Supabase database until you remove the alert; Telegram&apos;s data handling policies also apply to your chats.</li>
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> <strong>Community reports:</strong> If you submit a report, the identifier, evidence, and explanation are stored in Supabase for moderation. The submission is retained until an operator deletes it under their retention policy.</li>
             </ul>
             <p className="text-white/70 mt-4">
@@ -80,7 +80,7 @@ export default function PrivacyPage() {
             <ul className="space-y-3 text-white/80">
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> Scan results: Cached in-memory for 5 minutes (configurable via CACHE_TTL_SECONDS)</li>
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> Rate limit data: In-memory, expires after 60 seconds (configurable)</li>
-              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> <strong>Telegram alert subscriptions:</strong> Retained in Supabase until removed using the bot's alert controls</li>
+              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> <strong>Telegram alert subscriptions:</strong> Retained in Supabase until removed using the bot&apos;s alert controls</li>
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> No persistent database storage of wallet addresses or scan results</li>
             </ul>
           </section>
@@ -93,7 +93,7 @@ export default function PrivacyPage() {
             <ul className="space-y-3 text-white/80">
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> You can clear your browser cache to remove any client-side data</li>
               <li className="flex gap-3"><span className="text-solana-blue">▸</span> Server-side cache expires automatically</li>
-              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> Use the bot's /alerts menu to remove individual subscriptions</li>
+              <li className="flex gap-3"><span className="text-solana-blue">&rsaquo;</span> Use the bot&apos;s /alerts menu to remove individual subscriptions</li>
             </ul>
           </section>
 
