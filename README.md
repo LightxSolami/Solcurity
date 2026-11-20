@@ -104,8 +104,15 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | `TELEGRAM_WEBHOOK_SECRET` | Yes, for Telegram | — | Secret header configured with Telegram when setting the webhook |
 | `TELEGRAM_WEBHOOK_ADMIN_TOKEN` | Yes, for webhook administration | — | Bearer token required for webhook `set`, `delete`, `info`, and `me` actions |
 | `TELEGRAM_CRON_SECRET` | Yes, for Telegram alerts | — | Shared bearer secret for the scheduled alert dispatcher |
+| `CRON_SECRET` | Yes, for Vercel Cron | — | Bearer secret automatically sent by Vercel Cron; AI News and Telegram dispatch also accept it |
 | `NEXT_PUBLIC_PUMPFUN_TOKEN_URL` | No | — | Official Pump.fun coin URL (`https://pump.fun/coin/<mint>`) shown in the dashboard launch card |
-| `GROQ_API_KEY` | No | — | Server-only Groq API key for optional Qwen scan explanations; never expose as `NEXT_PUBLIC_*` |
+| `GROQ_API_KEY` | No | — | Server-only Groq API key for optional Qwen explanations and AI News debates; never expose as `NEXT_PUBLIC_*` |
+| `GEMINI_API_KEY` | No | — | Server-only Gemini API key; at least one AI News provider key is needed to generate debates |
+| `HUGGINGFACE_API_KEY` | No | — | Optional server-only AI News provider key |
+| `TOGETHER_API_KEY` | No | — | Optional server-only AI News provider key |
+| `AI_NEWS_CRON_SECRET` | No | — | Optional dedicated bearer secret for the AI News scheduled endpoint; Vercel Cron uses `CRON_SECRET` |
+| `AI_NEWS_MAX_ITEMS` | No | `8` | Maximum headlines included in each scheduled debate |
+| `AI_NEWS_QUICK_MODE` | No | `false` | Use three discussion rounds instead of four |
 | `RATE_LIMIT_MAX_REQUESTS` | No | `10` | Max scans per IP per window |
 | `RATE_LIMIT_WINDOW_SECONDS` | No | `60` | Rate limit window in seconds |
 | `CACHE_TTL_SECONDS` | No | `300` | Scan result cache TTL |
@@ -126,6 +133,12 @@ The remote MCP endpoint is `/api/mcp`. In Claude, add it as a custom remote conn
 Scan results also offer an optional explanation using the existing Qwen model through Groq. The user must request it; only scan checks and up to eight findings are sent, with the scanned wallet address redacted. A separate copy action lets the user choose whether to paste a limited summary into Claude. Configure `GROQ_API_KEY` on the server to enable explanations. Provider rate limits and availability apply.
 
 The MCP tool scans public Mainnet data, is rate-limited, and never signs or sends transactions. It preserves UNKNOWN and partial statuses. Neither the scanner nor an AI explanation guarantees wallet safety.
+
+### AI Debate setup
+
+The AI Debate dashboard at `/ai-news` is linked from the home dashboard and main navigation. It publishes debates every six hours using the Vercel Cron entry in `vercel.json`. Configure at least one server-side provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY`, or `TOGETHER_API_KEY`) and set `CRON_SECRET` in Vercel so scheduled requests are authenticated. Do not expose provider keys with `NEXT_PUBLIC_` prefixes.
+
+Debate history requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/migrations/202611200001_ai_news_discussions.sql` to the Supabase project before enabling debate history. The Vercel job runs every six hours, as configured in `vercel.json`. AI output may be inaccurate and is not financial, security, or investment advice.
 
 ### Telegram bot setup
 

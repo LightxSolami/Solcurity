@@ -154,7 +154,9 @@ describe("POST /api/telegram/alerts/dispatch", () => {
 
     expect(response.status).toBe(200);
     expect(telegram.sendMessage).toHaveBeenCalledTimes(4);
-    const sentMessages = telegram.sendMessage.mock.calls.map(([, text]) => text).join("\n");
+    const sentMessages = telegram.sendMessage.mock.calls
+      .map((call: unknown[]) => String(call[1]))
+      .join("\n");
     expect(sentMessages).toContain("New transactions");
     expect(sentMessages).toContain("Large SOL balance change");
     expect(sentMessages).toContain("Program interaction");

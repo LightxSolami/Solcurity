@@ -1,3 +1,9 @@
+import "server-only";
+import { groqComplete } from "./groq-client";
+import { geminiComplete } from "./gemini-client";
+import { huggingFaceComplete } from "./huggingface-client";
+import { togetherComplete } from "./together-client";
+
 export { groqClient, groqComplete } from "./groq-client";
 export { geminiClient, geminiComplete } from "./gemini-client";
 export { huggingFaceComplete } from "./huggingface-client";
@@ -16,21 +22,4 @@ export function getAvailableClients(): AIClient[] {
     { name: "HuggingFace", complete: huggingFaceComplete, available: !!process.env.HUGGINGFACE_API_KEY },
     { name: "Together.ai", complete: togetherComplete, available: !!process.env.TOGETHER_API_KEY },
   ].filter(c => c.available);
-}
-
-export async function completeWithAllClients(
-  messages: { role: string; content: string }[],
-  options?: { model?: string; temperature?: number; maxTokens?: number }
-): Promise<Map<string, string>> {
-  const clients = getAvailableClients();
-  const results = new Map<string, string>();
-
-  await Promise.all(
-    clients.map(async (client) => {
-      const response = await client.complete(messages, options);
-      if (response) results.set(client.name, response);
-    })
-  );
-
-  return results;
 }

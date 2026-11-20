@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getRecentDiscussions, getLatestDiscussion } from "@/lib/ai-news/discussion-repository";
+import {
+  getDiscussionSession,
+  getLatestDiscussion,
+  getRecentDiscussions,
+} from "@/lib/ai-news/discussion-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,7 +11,10 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
+  const requestedLimit = Number(searchParams.get("limit") || "20");
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 50)
+    : 20;
   const id = searchParams.get("id");
 
   try {
@@ -31,6 +38,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ discussions });
   } catch (error) {
     console.error("Failed to fetch discussions:", error);
-    return NextResponse.json({ error: "Failed to fetch discussions" }, { status: 500 });
+    const notConfigured =
+      error instanceof Error && error.message === "Discussion storage is not configured.";
+    return NextResponse.json(
+      { error: notConfigured ? "Discussion storage is not configured" : "Failed to fetch discussions" },
+      { status: notConfigured ? 503 : 500 }
+    );
   }
 }

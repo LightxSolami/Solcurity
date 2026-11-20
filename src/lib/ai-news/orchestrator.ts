@@ -1,5 +1,6 @@
-import { NewsItem } from "../news-aggregator";
-import { completeWithAllClients, AIClient } from "./clients";
+import "server-only";
+import type { NewsItem } from "./news-aggregator";
+import { getAvailableClients, type AIClient } from "./clients";
 
 export interface AIPersona {
   id: string;
@@ -62,6 +63,7 @@ export interface DiscussionMessage {
   personaName: string;
   role: string;
   content: string;
+  provider?: string;
   timestamp: string;
   color: string;
   avatar: string;
@@ -83,7 +85,7 @@ export interface DiscussionSession {
 }
 
 function buildDiscussionPrompt(newsItems: NewsItem[], round: number, previousMessages: DiscussionMessage[]): string {
-  const newsContext = newsItems.map((n, i) => 
+  const newsContext = newsItems.map((n, i) =>
     `${i + 1}. [${n.source}] ${n.title}\n   ${n.summary.slice(0, 300)}\n   Tags: ${n.tags.join(", ")}`
   ).join("\n\n");
 
@@ -107,41 +109,83 @@ ROUND ${round} INSTRUCTIONS:
 Speak as YOUR persona. Reference specific news items. Disagree constructively. Keep responses to 3-4 sentences max.`;
 }
 
+async function completeWithFallback(
+  clients: AIClient[],
+  messages: { role: string; content: string }[],
+  options: { temperature: number; maxTokens: number },
+  firstClientIndex: number
+): Promise<{ content: string; provider: string }> {
+  for (let attempt = 0; attempt < clients.length; attempt++) {
+    const client = clients[(firstClientIndex + attempt) % clients.length];
+    const content = await client.complete(messages, options);
+    if (content?.trim()) {
+      return { content: content.trim(), provider: client.name };
+    }
+  }
+
+  throw new Error("All configured AI providers failed to generate a response.");
+}
+
 export async function runDiscussionSession(newsItems: NewsItem[], maxRounds = 4): Promise<DiscussionSession> {
+  if (newsItems.length === 0) {
+    throw new Error("At least one news item is required to start a discussion.");
+  }
+  if (!Number.isInteger(maxRounds) || maxRounds < 1 || maxRounds > 4) {
+    throw new RangeError("Discussion rounds must be an integer between 1 and 4.");
+  }
+
+  const clients = getAvailableClients();
+  if (clients.length === 0) {
+    throw new Error("Configure at least one AI provider to generate discussions.");
+  }
+
   const sessionId = `discussion-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const startedAt = new Date().toISOString();
   const rounds: DiscussionRound[] = [];
   const allMessages: DiscussionMessage[] = [];
 
   for (let round = 1; round <= maxRounds; round++) {
-    const roundMessages: DiscussionMessage[] = [];
+    const messagesByPersona: DiscussionMessage[] = new Array(PERSONAS.length);
+    const providerGroups = new Map<number, number[]>();
 
-    for (const persona of PERSONAS) {
-      const prompt = buildDiscussionPrompt(newsItems, round, allMessages);
-      const messages = [
-        { role: "system", content: persona.systemPrompt },
-        { role: "user", content: prompt },
-      ];
+    PERSONAS.forEach((_, personaIndex) => {
+      const providerIndex = (round - 1 + personaIndex) % clients.length;
+      const group = providerGroups.get(providerIndex) || [];
+      group.push(personaIndex);
+      providerGroups.set(providerIndex, group);
+    });
 
-      const responses = await completeWithAllClients(messages, { temperature: 0.4, maxTokens: 300 });
-      const content = responses.get("Groq") || responses.get("Gemini") || responses.get("HuggingFace") || responses.get("Together.ai") || "Unable to generate response.";
+    await Promise.all(Array.from(providerGroups.entries(), async ([providerIndex, personaIndexes]) => {
+      for (const personaIndex of personaIndexes) {
+        const persona = PERSONAS[personaIndex];
+        const prompt = buildDiscussionPrompt(newsItems, round, allMessages);
+        const response = await completeWithFallback(
+          clients,
+          [
+            { role: "system", content: persona.systemPrompt },
+            { role: "user", content: prompt },
+          ],
+          { temperature: 0.4, maxTokens: 300 },
+          providerIndex
+        );
 
-      const message: DiscussionMessage = {
-        personaId: persona.id,
-        personaName: persona.name,
-        role: persona.role,
-        content,
-        timestamp: new Date().toISOString(),
-        color: persona.color,
-        avatar: persona.avatar,
-      };
+        messagesByPersona[personaIndex] = {
+          personaId: persona.id,
+          personaName: persona.name,
+          role: persona.role,
+          content: response.content,
+          provider: response.provider,
+          timestamp: new Date().toISOString(),
+          color: persona.color,
+          avatar: persona.avatar,
+        };
+      }
+    }));
 
-      roundMessages.push(message);
-      allMessages.push(message);
-    }
+    const roundMessages = messagesByPersona;
 
+    allMessages.push(...roundMessages);
     rounds.push({ round, topic: `Round ${round}`, messages: roundMessages });
-
-    await new Promise(r => setTimeout(r, 500));
   }
 
   const summaryPrompt = `Summarize this 4-expert discussion in 4 bullet points:
@@ -153,20 +197,18 @@ export async function runDiscussionSession(newsItems: NewsItem[], maxRounds = 4)
 Discussion:
 ${allMessages.map(m => `${m.avatar} ${m.personaName}: ${m.content}`).join("\n")}`;
 
-  const summaryResponses = await completeWithAllClients([
+  const summary = await completeWithFallback(clients, [
     { role: "system", content: "You synthesize expert discussions into concise actionable summaries." },
     { role: "user", content: summaryPrompt },
-  ], { temperature: 0.2, maxTokens: 200 });
-
-  const summary = summaryResponses.get("Groq") || summaryResponses.get("Gemini") || "Summary generation failed.";
+  ], { temperature: 0.2, maxTokens: 200 }, 0);
 
   return {
     id: sessionId,
     newsItems,
     rounds,
-    startedAt: new Date().toISOString(),
+    startedAt,
     completedAt: new Date().toISOString(),
-    summary,
+    summary: summary.content,
   };
 }
 

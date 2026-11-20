@@ -1,13 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchAllNews, getTopNews, getNewsByCategory } from "@/lib/ai-news/news-aggregator";
+import type { NewsItem } from "@/lib/ai-news/news-aggregator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const NEWS_CATEGORIES: NewsItem["category"][] = [
+  "solana", "defi", "nft", "infrastructure", "regulation", "market", "security", "general",
+];
+
+function isNewsCategory(category: string): category is NewsItem["category"] {
+  return NEWS_CATEGORIES.some(candidate => candidate === category);
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const action = searchParams.get("action");
-  const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
+  const requestedLimit = Number(searchParams.get("limit") || "20");
+  const limit = Number.isFinite(requestedLimit)
+    ? Math.min(Math.max(Math.trunc(requestedLimit), 1), 50)
+    : 20;
   const category = searchParams.get("category");
 
   try {
@@ -17,7 +29,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (category) {
-      const news = await getNewsByCategory(category as any, limit);
+      if (!isNewsCategory(category)) {
+        return NextResponse.json({ error: "Invalid news category" }, { status: 400 });
+      }
+      const news = await getNewsByCategory(category, limit);
       return NextResponse.json({ news });
     }
 

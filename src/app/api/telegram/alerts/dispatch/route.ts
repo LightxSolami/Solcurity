@@ -188,11 +188,12 @@ async function processAlert(
 }
 
 export async function POST(request: NextRequest) {
-  const cronSecret = process.env.TELEGRAM_CRON_SECRET;
-  if (!cronSecret) {
+  const cronSecrets = [process.env.TELEGRAM_CRON_SECRET, process.env.CRON_SECRET]
+    .filter((secret): secret is string => Boolean(secret));
+  if (cronSecrets.length === 0) {
     return NextResponse.json({ error: "Alert dispatch is not configured" }, { status: 503 });
   }
-  if (!hasBearerToken(request.headers.get("authorization"), cronSecret)) {
+  if (!cronSecrets.some(secret => hasBearerToken(request.headers.get("authorization"), secret))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!BOT_TOKEN) {

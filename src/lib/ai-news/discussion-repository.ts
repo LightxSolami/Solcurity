@@ -1,14 +1,6 @@
 import "server-only";
-import { z } from "zod";
 import { getThreatIntelAdminClient } from "@/lib/threat-intel/supabase-client";
-import { DiscussionSession, DiscussionMessage } from "./orchestrator";
-
-const DiscussionRowSchema = z.object({
-  id: z.string(),
-  session_data: z.string(),
-  created_at: z.string().datetime({ offset: true }),
-  updated_at: z.string().datetime({ offset: true }),
-});
+import type { DiscussionSession } from "./orchestrator";
 
 export interface StoredDiscussion {
   id: string;
@@ -117,12 +109,12 @@ export async function deleteOldDiscussions(olderThanDays = 30): Promise<number> 
   const cutoff = new Date(Date.now() - olderThanDays * 24 * 60 * 60 * 1000).toISOString();
   const result = await client
     .from("ai_news_discussions")
-    .delete()
+    .delete({ count: "exact" })
     .lt("created_at", cutoff);
 
   if (result.error) {
     console.error("Failed to delete old discussions:", result.error);
-    return 0;
+    throw new Error("Failed to delete old discussions");
   }
 
   return result.count || 0;

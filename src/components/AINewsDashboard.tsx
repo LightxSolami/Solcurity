@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { DiscussionSession, DiscussionMessage, DiscussionRound } from "@/lib/ai-news/orchestrator";
-import { NewsItem } from "@/lib/ai-news/news-aggregator";
+import { useState, useEffect, useCallback } from "react";
+import type { DiscussionSession, DiscussionMessage, DiscussionRound } from "@/lib/ai-news/orchestrator";
+import type { NewsItem } from "@/lib/ai-news/news-aggregator";
 
 interface StoredDiscussion {
   id: string;
@@ -16,64 +16,63 @@ export function AINewsDashboard() {
   const [discussions, setDiscussions] = useState<StoredDiscussion[]>([]);
   const [topNews, setTopNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [discussionError, setDiscussionError] = useState<string | null>(null);
+  const [newsError, setNewsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"live" | "history" | "news">("live");
   const [autoRefresh, setAutoRefresh] = useState(true);
-  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const [discussionsRes, newsRes] = await Promise.all([
-        fetch("/api/ai-news/discussions?action=latest"),
+      setRefreshing(true);
+      const [latestRes, historyRes, newsRes] = await Promise.all([
+        fetch("/api/ai-news/discussions?action=latest", { cache: "no-store" }),
+        fetch("/api/ai-news/discussions?limit=10", { cache: "no-store" }),
         fetch("/api/ai-news/news?action=top&limit=10"),
       ]);
 
-      if (discussionsRes.ok) {
-        const data = await discussionsRes.json();
-        if (data.discussion) {
-          setLatestDiscussion(data.discussion);
-        }
-      }
-
-      const historyRes = await fetch("/api/ai-news/discussions?limit=10");
-      if (historyRes.ok) {
-        const data = await historyRes.json();
-        setDiscussions(data.discussions || []);
+      if (latestRes.ok && historyRes.ok) {
+        const [latestData, historyData] = await Promise.all([
+          latestRes.json() as Promise<{ discussion: StoredDiscussion | null }>,
+          historyRes.json() as Promise<{ discussions: StoredDiscussion[] }>,
+        ]);
+        setLatestDiscussion(latestData.discussion);
+        setDiscussions(historyData.discussions || []);
+        setDiscussionError(null);
+      } else {
+        setDiscussionError(
+          latestRes.status === 503 || historyRes.status === 503
+            ? "Discussion history needs its Supabase storage configured and migrated."
+            : "Could not load discussion history."
+        );
       }
 
       if (newsRes.ok) {
-        const data = await newsRes.json();
+        const data = await newsRes.json() as { news: NewsItem[] };
         setTopNews(data.news || []);
+        setNewsError(null);
+      } else {
+        setNewsError("Could not load the news feed. Please try again.");
       }
     } catch (err) {
-      setError("Failed to fetch data");
+      setError("Could not reach the AI Debate services. Check your connection and retry.");
       console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchData();
-    if (autoRefresh) {
-      refreshIntervalRef.current = setInterval(fetchData, 60000);
-    }
+    void fetchData();
+    if (!autoRefresh) return;
+    const interval = setInterval(() => void fetchData(), 60000);
     return () => {
-      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
+      clearInterval(interval);
     };
-  }, [autoRefresh]);
-
-  useEffect(() => {
-    if (autoRefresh) {
-      refreshIntervalRef.current = setInterval(fetchData, 60000);
-    } else if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-    }
-    return () => {
-      if (refreshIntervalRef.current) clearInterval(refreshIntervalRef.current);
-    };
-  }, [autoRefresh]);
+  }, [autoRefresh, fetchData]);
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -103,66 +102,91 @@ export function AINewsDashboard() {
     return colors[category] || colors.general;
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-solana-blue border-t-transparent"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12 text-red-400">
-        <p>{error}</p>
-        <button onClick={fetchData} className="mt-4 px-4 py-2 bg-solana-blue text-white rounded hover:bg-solana-blue/80">
-          Retry
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white">AI News Intelligence</h1>
-          <p className="text-white/60 mt-1">
-            24/7 multi-AI expert panel discussing Solana & crypto developments
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 text-white/80">
+    <div className="space-y-7">
+      <section className="relative isolate overflow-hidden rounded-[1.75rem] border border-[#62c99b]/20 bg-[radial-gradient(ellipse_at_82%_15%,rgba(98,201,155,0.16),transparent_35%),radial-gradient(ellipse_at_12%_100%,rgba(68,122,255,0.12),transparent_42%),linear-gradient(125deg,#0b1717,#0b0f18_58%,#101021)] p-6 shadow-[0_28px_90px_rgba(0,0,0,0.28)] sm:p-9">
+        <div className="pointer-events-none absolute inset-0 -z-10 opacity-[0.16] [background-image:linear-gradient(rgba(255,255,255,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:42px_42px] [mask-image:linear-gradient(to_bottom_right,black,transparent_75%)]" />
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-[#62c99b]/25 bg-[#62c99b]/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#a6e8c4]">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#62c99b]" />
+                Solana intelligence / AI debate
+              </span>
+              <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/45">
+                Updates every 6 hours
+              </span>
+            </div>
+            <h1 className="text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              Four perspectives.<br />
+              <span className="bg-gradient-to-r from-[#62c99b] via-[#b8ecd1] to-[#9cb7ff] bg-clip-text text-transparent">
+                One sharper signal.
+              </span>
+            </h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/55 sm:text-base">
+              An analyst, protocol engineer, ecosystem strategist, and risk researcher debate the latest Solana developments.
+              AI-generated insights are starting points, not financial or security advice.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {[
+                { label: "ON-CHAIN", color: "#62c99b" },
+                { label: "ENGINEERING", color: "#7bb9ff" },
+                { label: "ECOSYSTEM", color: "#ff81d0" },
+                { label: "RISK", color: "#ff7878" },
+              ].map((item) => (
+                <span
+                  key={item.label}
+                  className="rounded-lg border bg-black/20 px-2.5 py-1.5 font-mono text-[9px] font-semibold tracking-[0.15em]"
+                  style={{ borderColor: `${item.color}35`, color: item.color }}
+                >
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col lg:items-end">
+            <label className="flex items-center gap-2 text-xs text-white/55">
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="rounded border-white/20 bg-solana-navy text-solana-blue focus:ring-solana-blue"
             />
-            Auto-refresh (1m)
-          </label>
-          <button
-            onClick={fetchData}
-            disabled={loading}
-            className="px-4 py-2 bg-solana-blue text-white rounded hover:bg-solana-blue/80 disabled:opacity-50"
-          >
-            Refresh Now
+              Auto-refresh every minute
+            </label>
+            <button
+              onClick={() => void fetchData()}
+              disabled={refreshing}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#62c99b]/30 bg-[#62c99b]/[0.09] px-4 py-2.5 text-sm font-semibold text-[#b8ecd1] transition hover:bg-[#62c99b]/[0.16] disabled:cursor-wait disabled:opacity-60"
+            >
+              <span aria-hidden="true">{refreshing ? "◌" : "↻"}</span>
+              {refreshing ? "Syncing…" : "Refresh signal"}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {(error || discussionError || newsError) && (
+        <div role="status" className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm text-amber-100/80">
+          {[error, discussionError, newsError].filter(Boolean).join(" ")}
+          <button onClick={() => void fetchData()} className="ml-2 font-semibold text-amber-100 underline underline-offset-2">
+            Retry
           </button>
         </div>
-      </div>
+      )}
 
       <div className="border-b border-white/10">
         <nav className="flex gap-1" role="tablist">
-          {[
-            { id: "live", label: "Live Discussion", icon: "💬" },
+          {([
+            { id: "live", label: "Latest Briefing", icon: "◈" },
             { id: "history", label: "History", icon: "📜" },
             { id: "news", label: "News Feed", icon: "📰" },
-          ].map((tab) => (
+          ] as const).map((tab) => (
             <button
               key={tab.id}
               role="tab"
               aria-selected={activeTab === tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 rounded-t-lg text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? "bg-solana-blue/20 text-solana-blue border-b-2 border-solana-blue"
@@ -196,7 +220,7 @@ export function AINewsDashboard() {
 
               {latestDiscussion.session.summary && (
                 <div className="bg-solana-navy/50 border border-solana-blue/30 rounded-xl p-5">
-                  <h3 className="text-solana-blue font-semibold mb-3">📋 Executive Summary</h3>
+                  <h3 className="text-solana-blue font-semibold mb-3">◇ Executive Summary</h3>
                   <div className="text-white/90 whitespace-pre-line">{latestDiscussion.session.summary}</div>
                 </div>
               )}
@@ -220,6 +244,11 @@ export function AINewsDashboard() {
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium text-white">{msg.personaName}</span>
                               <span className="text-xs text-white/50 px-2 py-0.5 rounded bg-white/10">{msg.role}</span>
+                              {msg.provider && (
+                                <span className="font-mono text-[9px] uppercase tracking-wider text-[#9cb7ff]/70">
+                                  {msg.provider}
+                                </span>
+                              )}
                             </div>
                             <div className="text-white/90 text-sm leading-relaxed">{msg.content}</div>
                           </div>
@@ -263,15 +292,24 @@ export function AINewsDashboard() {
                 </div>
               </div>
             </>
+          ) : loading ? (
+            <div role="status" className="rounded-2xl border border-white/10 bg-white/[0.025] px-6 py-12 text-center text-sm text-white/50">
+              <span className="mx-auto mb-4 block h-8 w-8 animate-spin rounded-full border-2 border-[#62c99b]/25 border-t-[#62c99b]" />
+              Checking for the latest briefing…
+            </div>
           ) : (
-            <div className="text-center py-16 text-white/50">
-              <p className="text-xl mb-2">No discussion yet</p>
-              <p>The AI panel will start analyzing news on the next cron run (every 6 hours).</p>
+            <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_50%_0%,rgba(98,201,155,0.09),transparent_60%),rgba(14,20,25,0.72)] px-6 py-14 text-center">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#62c99b]/20 bg-[#62c99b]/[0.07] text-2xl text-[#a6e8c4]">⌁</div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[#62c99b]/75">No briefing published</p>
+              <h2 className="mt-3 text-2xl font-semibold text-white">The panel is waiting for its first session</h2>
+              <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-white/50">
+                Scheduled debates run every six hours. Explore the latest Solana headlines while the next session is prepared.
+              </p>
               <button
-                onClick={fetchData}
-                className="mt-4 px-6 py-3 bg-solana-blue text-white rounded-lg hover:bg-solana-blue/80"
+                onClick={() => setActiveTab("news")}
+                className="mt-6 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/80 transition hover:border-[#62c99b]/25 hover:text-white"
               >
-                Trigger Discussion Now
+                Explore the news feed <span aria-hidden="true">→</span>
               </button>
             </div>
           )}
@@ -282,30 +320,34 @@ export function AINewsDashboard() {
         <div className="space-y-4">
           {discussions.length > 0 ? (
             discussions.map((discussion) => (
-              <div
+              <button
                 key={discussion.id}
-                className="bg-solana-navy/50 border border-white/10 rounded-xl p-5 hover:border-solana-blue/30 transition-colors cursor-pointer"
-                onClick={() => window.open(`/api/ai-news/discussions?id=${discussion.id}`, "_blank")}
+                type="button"
+                className="w-full bg-solana-navy/50 border border-white/10 rounded-xl p-5 text-left hover:border-solana-blue/30 transition-colors"
+                onClick={() => {
+                  setLatestDiscussion(discussion);
+                  setActiveTab("live");
+                }}
               >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <p className="font-mono text-xs text-white/60">{discussion.id}</p>
-                    <p className="text-white font-medium mt-1">
+                <span className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <span>
+                    <span className="block font-mono text-xs text-white/60">{discussion.id}</span>
+                    <span className="mt-1 block text-white font-medium">
                       {discussion.session.newsItems.length} articles • {discussion.session.rounds.length} rounds
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-white/50 text-sm">{formatDate(discussion.createdAt)}</p>
+                    </span>
+                  </span>
+                  <span className="block text-right">
+                    <span className="block text-white/50 text-sm">{formatDate(discussion.createdAt)}</span>
                     {discussion.session.summary && (
-                      <p className="text-white/70 text-sm mt-1 line-clamp-2">{discussion.session.summary}</p>
+                      <span className="mt-1 block line-clamp-2 text-sm text-white/70">{discussion.session.summary}</span>
                     )}
-                  </div>
-                </div>
-              </div>
+                  </span>
+                </span>
+              </button>
             ))
           ) : (
             <div className="text-center py-12 text-white/50">
-              <p>No discussion history yet</p>
+              <p>{loading ? "Loading discussion history…" : "No discussion history yet"}</p>
             </div>
           )}
         </div>
@@ -349,14 +391,14 @@ export function AINewsDashboard() {
             ))
           ) : (
             <div className="text-center py-12 text-white/50">
-              <p>No news available</p>
+              <p>{loading ? "Gathering the latest news…" : "No news available"}</p>
             </div>
           )}
         </div>
       )}
 
       <div className="border-t border-white/10 pt-8 text-center text-white/50 text-sm">
-        <p>Powered by Groq • Gemini • HuggingFace • Together.ai</p>
+        <p>Multi-provider AI panel · Requires at least one server-side AI provider key</p>
         <p className="mt-1">Automated analysis — not financial advice. Verify independently.</p>
       </div>
     </div>

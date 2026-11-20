@@ -10,6 +10,7 @@ const footerGroups = [
     links: [
       { href: "/", label: "Wallet tracker" },
       { href: "/scanner", label: "Wallet scanner" },
+      { href: "/ai-news", label: "AI Debate" },
       { href: "/svm", label: "SVM explorer" },
       { href: "/tools", label: "Tools" },
       { href: "/tools/pumpfuntool", label: "Token analytics" },

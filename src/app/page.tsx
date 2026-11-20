@@ -55,6 +55,76 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="px-4 pb-8 sm:px-6" aria-label="AI debate">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/ai-news"
+            className="group relative flex flex-col gap-6 overflow-hidden rounded-2xl border border-[#62c99b]/20 bg-[radial-gradient(ellipse_at_84%_50%,rgba(98,201,155,0.12),transparent_38%),radial-gradient(ellipse_at_12%_0%,rgba(82,120,255,0.08),transparent_40%),linear-gradient(115deg,rgba(12,20,19,0.98),rgba(10,15,20,0.98))] p-5 transition hover:border-[#62c99b]/40 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          >
+            <div className="flex items-center gap-4">
+              <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#62c99b]/25 bg-[#62c99b]/[0.07] text-[#a6e8c4]">
+                <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden="true">
+                  <circle cx="16" cy="16" r="11.5" stroke="currentColor" strokeOpacity=".42" />
+                  <circle cx="16" cy="16" r="6.5" stroke="currentColor" strokeOpacity=".7" />
+                  <circle cx="16" cy="16" r="2" fill="currentColor" />
+                  <path d="M16 2v5M30 16h-5M16 30v-5M2 16h5" stroke="currentColor" strokeLinecap="round" />
+                </svg>
+                <span className="absolute right-2 top-2 h-1.5 w-1.5 animate-pulse rounded-full bg-[#62c99b] shadow-[0_0_10px_#62c99b]" />
+              </span>
+              <span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#62c99b]">
+                  Intelligence brief · AI Debate
+                </span>
+                <span className="mt-1 block text-lg font-semibold text-white">
+                  Four perspectives. One sharper signal.
+                </span>
+                <span className="mt-1 block max-w-2xl text-sm text-white/50">
+                  Read a scheduled Solana news debate between on-chain, engineering, ecosystem, and risk experts.
+                </span>
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#62c99b]/25 bg-[#62c99b]/[0.08] px-4 py-2.5 text-sm font-semibold text-[#b8ecd1] transition group-hover:bg-[#62c99b]/[0.15] sm:self-auto">
+              Open AI Debate
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+        </div>
+      </section>
+
+      <section className="px-4 pb-8 sm:px-6" aria-label="Claude MCP connector">
+        <div className="mx-auto max-w-7xl">
+          <Link
+            href="/claude"
+            className="group relative flex flex-col gap-6 overflow-hidden rounded-2xl border border-[#a78bfa]/20 bg-[radial-gradient(ellipse_at_84%_50%,rgba(167,139,250,0.14),transparent_40%),radial-gradient(ellipse_at_12%_0%,rgba(98,201,155,0.07),transparent_42%),linear-gradient(115deg,rgba(17,15,28,0.98),rgba(10,15,20,0.98))] p-5 transition hover:border-[#a78bfa]/40 sm:flex-row sm:items-center sm:justify-between sm:p-6"
+          >
+            <div className="flex items-center gap-4">
+              <span className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-[#a78bfa]/25 bg-[#a78bfa]/[0.08] text-[#c4b5fd]">
+                <svg viewBox="0 0 32 32" className="h-8 w-8" fill="none" aria-hidden="true">
+                  <path d="M16 3.5 27 8v7.4c0 6.2-4.1 10.8-11 13.1C9.1 26.2 5 21.6 5 15.4V8l11-4.5Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                  <path d="M11 16h10M16 11v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="16" cy="16" r="13" stroke="currentColor" strokeOpacity=".2" strokeDasharray="2 3" />
+                </svg>
+              </span>
+              <span>
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-[#c4b5fd]">
+                  Read-only connector · Claude MCP
+                </span>
+                <span className="mt-1 block text-lg font-semibold text-white">
+                  Solana wallet intelligence, inside Claude
+                </span>
+                <span className="mt-1 block max-w-2xl text-sm text-white/50">
+                  Ask Claude to scan public Mainnet data through Solcurity’s remote MCP tool—no wallet connection or API key needed.
+                </span>
+              </span>
+            </div>
+            <span className="inline-flex items-center gap-2 self-start rounded-xl border border-[#a78bfa]/25 bg-[#a78bfa]/[0.08] px-4 py-2.5 text-sm font-semibold text-[#ddd6fe] transition group-hover:bg-[#a78bfa]/[0.15] sm:self-auto">
+              Connect Claude
+              <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+        </div>
+      </section>
+
       <section className="px-4 pb-8 sm:px-6" aria-label="Pump.fun analytics">
         <div className="mx-auto max-w-7xl">
           <Link

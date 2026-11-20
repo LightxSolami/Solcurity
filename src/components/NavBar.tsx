@@ -10,6 +10,7 @@ const navItems = [
   { href: "/", label: "Tracker" },
   { href: "/scanner", label: "Scanner" },
   { href: "/bubble-map", label: "Fly Map" },
+  { href: "/ai-news", label: "AI Debate" },
   { href: "/perps", label: "Perps DEX" },
   { href: "/svm", label: "SVM Explorer" },
   { href: "/threat-intel", label: "Threat Intel" },
