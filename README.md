@@ -138,6 +138,14 @@ The MCP tool scans public Mainnet data, is rate-limited, and never signs or send
 
 The AI Debate dashboard at `/ai-news` is linked from the home dashboard and main navigation. It publishes debates once daily using the Vercel Cron entry in `vercel.json`, which is compatible with Vercel Hobby. The cron sends an authenticated `GET` request and requires `CRON_SECRET` in Vercel. Configure at least one server-side provider key (`GROQ_API_KEY`, `GEMINI_API_KEY`, `HUGGINGFACE_API_KEY`, or `TOGETHER_API_KEY`). Do not expose provider keys with `NEXT_PUBLIC_` prefixes. Telegram alerts continue to run every five minutes through the included GitHub Actions workflow.
 
+Generate a strong cron secret locally with Node.js:
+
+```sh
+node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
+```
+
+Add the generated value as `CRON_SECRET` in the Vercel project’s Environment Variables, then redeploy. For Telegram alerts, use the same value as `TELEGRAM_CRON_SECRET` in Vercel and as a GitHub Actions repository secret. Also add `SOLCURITY_APP_URL` as a GitHub Actions secret with the production origin (for example, `https://solcurity.vercel.app`). Never commit the generated secret.
+
 Debate history requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Apply `supabase/migrations/202611200001_ai_news_discussions.sql` to the Supabase project before enabling debate history. AI output may be inaccurate and is not financial, security, or investment advice.
 
 ### Telegram bot setup
