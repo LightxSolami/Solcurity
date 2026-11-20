@@ -9,13 +9,18 @@ const MATCH_DISCRIMINATOR = [87, 187, 102, 98, 236, 52, 127, 39];
 export const DEV_FEE_BPS = 50;
 export const DEVELOPER_WALLET = 'DLbjcTvMHuvENT1336tdSRd9giHzJd5Uwo5WraqQ3k82';
 export const FEES = { '0.5': 500_000_000n, '1': 1_000_000_000n, '10': 10_000_000_000n };
-const DEVNET_GENESIS_HASH = 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG';
+export const CLUSTER_GENESIS_HASHES = {
+  devnet: 'EtWTRABZaYq6iMfeYKouRu166VU2xqa1wcaWoxPkrZBG',
+  testnet: '4uhcVJyU9pJkvQyS88uRDiswHXSCkY3zQawwpjk2NsNY',
+};
 const MATCH_ACCOUNT_SIZE = 474;
 const u64 = n => { const b = Buffer.alloc(8); b.writeBigUInt64LE(BigInt(n)); return b; };
 const u16 = n => { const b = Buffer.alloc(2); b.writeUInt16LE(n); return b; };
 export function load(env = process.env) {
   for (const k of ['PROGRAM_ID', 'RPC_URL', 'SERVER_KEYPAIR', 'TREASURY_PUBKEY', 'CLUSTER']) if (!env[k]) throw new Error('Missing env ' + k);
-  if (env.CLUSTER !== 'devnet') throw new Error('Wagering is devnet-only; mainnet is disabled.');
+  if (!Object.hasOwn(CLUSTER_GENESIS_HASHES, env.CLUSTER)) {
+    throw new Error('Wagering is supported on Devnet and Testnet only; mainnet is disabled.');
+  }
   if (env.FEE_BPS !== undefined && Number(env.FEE_BPS) !== DEV_FEE_BPS) throw new Error('FEE_BPS must be 50 (0.5%).');
   const treasury = new PublicKey(env.TREASURY_PUBKEY);
   if (!treasury.equals(new PublicKey(DEVELOPER_WALLET))) throw new Error('TREASURY_PUBKEY does not match the program treasury.');
@@ -25,9 +30,14 @@ export function load(env = process.env) {
   return { conn: new Connection(env.RPC_URL, 'confirmed'), kp, programId, treasury, feeBps: DEV_FEE_BPS,
     rpc: env.RPC_URL, cluster: env.CLUSTER };
 }
-export async function assertDevnet(c) {
+export async function assertSupportedCluster(c) {
+  const expectedGenesisHash = CLUSTER_GENESIS_HASHES[c.cluster];
+  if (!expectedGenesisHash) throw new Error('Wagering is supported on Devnet and Testnet only.');
   const genesisHash = await c.conn.getGenesisHash();
-  if (genesisHash !== DEVNET_GENESIS_HASH) throw new Error('RPC_URL is not connected to Solana Devnet; wagering startup refused.');
+  if (genesisHash !== expectedGenesisHash) {
+    const clusterName = c.cluster === 'testnet' ? 'Testnet' : 'Devnet';
+    throw new Error(`RPC_URL is not connected to Solana ${clusterName}; wagering startup refused.`);
+  }
 }
 export function pdas(programId, matchId) {
   const [gm] = PublicKey.findProgramAddressSync([Buffer.from('match'), u64(matchId)], programId);

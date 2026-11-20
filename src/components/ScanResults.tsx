@@ -9,6 +9,7 @@ import { TokenExplorer } from "@/components/TokenExplorer";
 import { TransactionExplorer } from "@/components/TransactionExplorer";
 import { ProgramInteractions } from "@/components/ProgramInteractions";
 import { SecurityWarning } from "@/components/SecurityWarning";
+import { ScanAiTools } from "@/components/ScanAiTools";
 import Link from "next/link";
 
 interface ScanResultsProps {
@@ -215,6 +216,7 @@ export function ScanResults({ address }: ScanResultsProps) {
       </section>
 
       <SecurityScore result={result} />
+      <ScanAiTools result={result} />
 
       <WalletSummary result={result} />
 

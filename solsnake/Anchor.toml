@@ -3,9 +3,11 @@
 resolution = true
 skip-lint = false
 [programs.localnet]
-solsnake_escrow = "6fQRwsksEJzR3igjjFH3kjRBWNMBShoXvcsVk7ZPC4y1"
+solsnake_escrow = "rRMcWb1sJeaPZBKzsj3ah7s93FAmevCkqHi3dstP4bC"
 [programs.devnet]
-solsnake_escrow = "11111111111111111111111111111111"
+solsnake_escrow = "rRMcWb1sJeaPZBKzsj3ah7s93FAmevCkqHi3dstP4bC"
+[programs.testnet]
+solsnake_escrow = "rRMcWb1sJeaPZBKzsj3ah7s93FAmevCkqHi3dstP4bC"
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"

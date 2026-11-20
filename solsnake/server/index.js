@@ -1,7 +1,7 @@
 import http from 'node:http'; import fs from 'node:fs'; import path from 'node:path'; import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws'; import { PublicKey } from '@solana/web3.js';
 import { Match, DT, MAX } from './game.js'; import * as chain from './chain.js';
-const PORT = +process.env.PORT || 8080, dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../client');
+const PORT = +process.env.PORT || 8080, HOST = process.env.HOST || '0.0.0.0', dir = path.join(path.dirname(fileURLToPath(import.meta.url)), '../client');
 const PAID = process.env.PAID_ENABLED === 'true'; // paid rooms: real on-chain deposits. Off by default.
 const C = PAID ? chain.load() : null;
 const BOTN = ['Nova', 'Vex', 'Kira', 'Zed', 'Rex'], FILL_MS = 8000, DEPOSIT_MS = 90000, sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -132,8 +132,8 @@ wss.on('connection', ws => {
   ws.on('close', () => { c.gone = true; clearInterval(rl); for (const k in Q) Q[k] = Q[k].filter(q => q !== c); });
 });
 async function start() {
-  if (PAID) await chain.assertDevnet(C);
-  srv.listen(PORT, '0.0.0.0', () => console.log(`SOLSNAKE server on port ${PORT} (paid rooms ${PAID ? 'DEVNET ONLY' : 'locked'})`));
+  if (PAID) await chain.assertSupportedCluster(C);
+  srv.listen(PORT, HOST, () => console.log(`SOLSNAKE server on ${HOST}:${PORT} (paid rooms ${PAID ? C.cluster.toUpperCase() + ' ONLY' : 'locked'})`));
 }
 
 start().catch(e => {

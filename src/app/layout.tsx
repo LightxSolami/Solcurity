@@ -21,6 +21,7 @@ const footerGroups = [
     links: [
       { href: "/how-it-works", label: "How it works" },
       { href: "/security", label: "Security" },
+      { href: "/claude", label: "Claude MCP" },
       { href: "/threat-intel", label: "Threat intelligence" },
       { href: "/faq", label: "FAQ" },
       { href: "/whitepaper", label: "Whitepaper" },

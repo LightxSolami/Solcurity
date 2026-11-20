@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
 import {
-  assertDevnet,
+  assertSupportedCluster,
+  CLUSTER_GENESIS_HASHES,
   createMatch,
   parseMatch,
   pdas,
@@ -99,10 +100,21 @@ const env = {
   TREASURY_PUBKEY: DEVELOPER_WALLET,
   CLUSTER: 'mainnet-beta',
 };
-assert.throws(() => load(env), /devnet-only/);
+assert.throws(() => load(env), /Devnet and Testnet only/);
 assert.throws(() => load({ ...env, CLUSTER: 'devnet', FEE_BPS: '500' }), /FEE_BPS must be 50/);
 assert.throws(() => load({ ...env, CLUSTER: 'devnet', TREASURY_PUBKEY: SystemProgram.programId.toBase58() }), /TREASURY_PUBKEY/);
-await assert.rejects(() => assertDevnet({ conn: { getGenesisHash: async () => 'mainnet-genesis' } }), /not connected to Solana Devnet/);
+await assert.rejects(() => assertSupportedCluster({
+  cluster: 'devnet',
+  conn: { getGenesisHash: async () => 'mainnet-genesis' },
+}), /not connected to Solana Devnet/);
+await assert.doesNotReject(() => assertSupportedCluster({
+  cluster: 'testnet',
+  conn: { getGenesisHash: async () => CLUSTER_GENESIS_HASHES.testnet },
+}));
+await assert.rejects(() => assertSupportedCluster({
+  cluster: 'testnet',
+  conn: { getGenesisHash: async () => CLUSTER_GENESIS_HASHES.devnet },
+}), /not connected to Solana Testnet/);
 await assert.rejects(() => createMatch(null, 1n, 123n), /Unsupported entry fee/);
 const addresses = pdas(new PublicKey(SystemProgram.programId), 5n);
 assert.ok(addresses.gm && addresses.vault);

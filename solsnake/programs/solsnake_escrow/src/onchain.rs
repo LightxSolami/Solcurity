@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::system_program::{transfer, Transfer};
 
-declare_id!("6fQRwsksEJzR3igjjFH3kjRBWNMBShoXvcsVk7ZPC4y1");
+declare_id!("rRMcWb1sJeaPZBKzsj3ah7s93FAmevCkqHi3dstP4bC");
 
 pub const MAX_PLAYERS: usize = 5;
 pub const BODY_LEN: usize = 3;

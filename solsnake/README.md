@@ -7,11 +7,10 @@ Anchor escrow program. The dashboard currently embeds the free practice client.
 
 **Mainnet is the intended launch network, but the game is not deployed or ready
 for real-money play. Do not accept real SOL.** `PAID_ENABLED` defaults to
-`false`; when enabled for testing, the server requires the configured RPC to
-report Solana's Devnet genesis hash. The escrow source still has a placeholder
-program ID and must not be deployed as-is.
+`false`; when enabled for beta testing, the server only accepts Devnet or
+Testnet and verifies the RPC's genesis hash. Test SOL has no real value.
 
-The Devnet check is a server-side safeguard, not an on-chain network lock. The
+The cluster check is a server-side safeguard, not an on-chain network lock. The
 program is cluster-agnostic; deploying it to Mainnet would expose the same
 wagering instructions. Do not deploy it there.
 
@@ -35,8 +34,8 @@ escrow program and verify the resulting on-chain state.
 - A no-survivor or 256-round draw lets each player reclaim their own entry
   immediately. A stalled match can be refunded after one hour.
 - The free practice room plays against four bots. Paid five-player rooms are
-  0.5, 1, or 10 SOL per player (Devnet SOL only while testing). The treasury
-  is fixed to `DLbjcTvMHuvENT1336tdSRd9giHzJd5Uwo5WraqQ3k82`.
+  0.5, 1, or 10 test SOL per player on Devnet or Testnet. Test SOL has no real
+  value. The treasury is fixed to `DLbjcTvMHuvENT1336tdSRd9giHzJd5Uwo5WraqQ3k82`.
 
 ## Trust and audit requirements
 
@@ -76,25 +75,28 @@ npm start
 Open `http://localhost:8080/online.html` in multiple browser tabs. The
 dashboard practice game is available separately at `/games/snake`.
 
-## Devnet-only wagering tests
+## Devnet and Testnet beta testing
 
-Use the Solana Anchor toolchain and dedicated Devnet wallets. Never reuse a
-production wallet or key. Keep `PAID_ENABLED=false` except during explicit
-Devnet testing.
+Use the Solana Anchor toolchain and dedicated test-cluster wallets. Never reuse
+a production wallet or key. `.env.example` is configured for Testnet; use
+`PAID_ENABLED=true` only while testing with valueless Testnet SOL. Keep it
+`false` for normal runs.
 
-The server requires `CLUSTER=devnet`, a Devnet RPC endpoint, the deployed
-program ID, a server keypair, and the fixed developer treasury in
-`.env.example`. Startup checks the RPC's genesis hash before opening a paid
-server. A Mainnet RPC is refused.
+The server requires `CLUSTER=testnet` (or `devnet`), a matching RPC endpoint,
+the deployed program ID, a dedicated server keypair, and the fixed developer
+treasury in `.env.example`. Startup checks the RPC's genesis hash before
+opening a paid server. A Mainnet RPC is refused.
 
 ```bash
 cd solsnake
-yarn install
 anchor build
-anchor test
+anchor test                       # local validator
+anchor deploy --provider.cluster testnet
 ```
 
-The program ID in `programs/solsnake_escrow/src/onchain.rs` is a placeholder.
+Deploy only with a dedicated Testnet-funded wallet. Set `ANCHOR_WALLET` to that
+wallet and `ANCHOR_PROVIDER_URL=https://api.testnet.solana.com`; never point
+these settings at Mainnet.
 
 ## Mainnet launch gates
 
@@ -104,7 +106,7 @@ Mainnet wagering must remain disabled until all of these are complete:
    configuration, generated IDL, and client.
 2. Pass local-validator integration tests for deposits, signed moves,
    settlement, draws, refunds, timeouts, retries, and failure cases.
-3. Pass end-to-end Devnet tests with dedicated test wallets and verify every
+3. Pass end-to-end Devnet and Testnet tests with dedicated test wallets and verify every
    paid-game action against confirmed on-chain state. Remove the legacy
    `/api/game` route from any paid-game flow.
 4. Complete an independent security review and obtain qualified legal review

@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { PumpFunCreatorMonitor } from "@/components/pumpfuntool/PumpFunCreatorMonitor";
 import { WalletTracker } from "@/components/WalletTracker";
+import { TelegramBotCard } from "@/components/telegram/TelegramBotCard";
 import { getPumpFunTokenLink } from "@/lib/pumpfun-token-link";
 
 export const metadata: Metadata = {
@@ -172,6 +173,12 @@ export default function HomePage() {
               <span aria-hidden="true">→</span>
             </span>
           </Link>
+</div>
+      </section>
+
+      <section className="px-4 pb-16 sm:px-6">
+        <div className="mx-auto max-w-7xl">
+          <TelegramBotCard />
         </div>
       </section>
 
@@ -189,6 +196,12 @@ export default function HomePage() {
 
       <section className="border-t border-white/[0.06] px-4 py-10 sm:px-6">
         <div className="mx-auto flex max-w-7xl flex-wrap justify-center gap-3">
+          <Link
+            href="/claude"
+            className="rounded-xl border border-solana-purple/30 bg-solana-purple/10 px-4 py-3 text-sm text-white/80 transition hover:bg-solana-purple/20 hover:text-white"
+          >
+            Use Solcurity with Claude
+          </Link>
           <Link
             href="/scanner"
             className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/70 transition hover:border-white/20 hover:text-white"
